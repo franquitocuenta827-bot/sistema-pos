@@ -834,7 +834,7 @@ async function startServer(port) {
     const p = port || PORT;
     const server = app.listen(p, '0.0.0.0', () => {
       console.log(`Software Único De Caños Embalse corriendo en http://localhost:${p}`);
-      console.log(`Base de datos: ${path.join(__dirname, 'sistema_pos.db')}`);
+      console.log(`Base de datos: ${require('./database').DB_PATH}`);
       console.log(`Usuario: admin | Contraseña: admin`);
       resolve(server);
     });
