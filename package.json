@@ -1,0 +1,61 @@
+{
+  "name": "sistema-pos",
+  "version": "1.0.0",
+  "description": "Software Único De Caños Embalse - Sistema POS",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "electron": "electron .",
+    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=electron/icon.png --app-version=1.0.0 --executable-name=SistemaPOS",
+    "dist:portable": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=electron/icon.png --app-version=1.0.0 --executable-name=SistemaPOS",
+    "dist:single": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.canios-embalse.sistema-pos",
+    "productName": "Sistema POS",
+    "directories": {
+      "output": "dist-single"
+    },
+    "files": [
+      "server.js",
+      "database.js",
+      "arca.js",
+      "electron/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "electron/icon.png",
+      "artifactName": "SistemaPOS.exe"
+    },
+    "portable": {
+      "requestExecutionLevel": "user",
+      "unicode": false
+    },
+    "electronVersion": "28.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "fast-xml-parser": "^5.10.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "node-forge": "^1.4.0",
+    "sharp": "^0.35.3",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "adm-zip": "^0.6.0",
+    "archiver": "^8.0.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2"
+  }
+}

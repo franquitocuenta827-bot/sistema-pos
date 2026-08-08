@@ -1,0 +1,10 @@
+node_modules/
+backups/
+dist/
+dist-single/
+*.db
+.DS_Store
+npm-debug.log
+.env
+__test_*.js
+_test_*.js
