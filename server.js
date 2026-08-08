@@ -67,20 +67,24 @@ app.post('/api/users', auth, adminOnly, (req, res) => {
 });
 
 app.put('/api/users/:id', auth, adminOnly, (req, res) => {
-  const { full_name, role, active, password } = req.body;
+  const { username, full_name, role, active, password } = req.body;
   const db = getDb();
-  let sql = "UPDATE users SET full_name=?, role=?, active=?";
-  const params = [full_name, role, active ?? 1];
-  if (password) {
-    const hash = bcrypt.hashSync(password, 10);
-    sql += ", password=?";
-    params.push(hash);
+  try {
+    let sql = "UPDATE users SET username=?, full_name=?, role=?, active=?";
+    const params = [username, full_name, role, active ?? 1];
+    if (password) {
+      const hash = bcrypt.hashSync(password, 10);
+      sql += ", password=?";
+      params.push(hash);
+    }
+    sql += " WHERE id=?";
+    params.push(req.params.id);
+    db.run(sql, params);
+    saveDb();
+    res.json({ success: true });
+  } catch {
+    res.status(400).json({ error: 'El nombre de usuario ya existe' });
   }
-  sql += " WHERE id=?";
-  params.push(req.params.id);
-  db.run(sql, params);
-  saveDb();
-  res.json({ success: true });
 });
 
 // ==================== CATEGORIES ====================
