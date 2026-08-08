@@ -206,6 +206,23 @@ app.delete('/api/products/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/import/prices', auth, adminOnly, (req, res) => {
+  const { prices } = req.body;
+  if (!prices) return res.status(400).json({ error: 'Falta lista de precios' });
+  const db = getDb();
+  let updated = 0, notFound = [];
+  for (const code of Object.keys(prices)) {
+    const price = parseFloat(prices[code]);
+    if (isNaN(price) || price <= 0) continue;
+    const exists = queryOne("SELECT id FROM products WHERE barcode=? AND active=1", [code]);
+    if (!exists) { if (code) notFound.push(code); continue; }
+    db.run("UPDATE products SET price=?, updated_at=CURRENT_TIMESTAMP WHERE barcode=?", [price, code]);
+    updated++;
+  }
+  saveDb();
+  res.json({ success: true, updated, notFound: notFound.length });
+});
+
 // ==================== CLIENTS ====================
 app.get('/api/clients', auth, (req, res) => {
   const { search } = req.query;
