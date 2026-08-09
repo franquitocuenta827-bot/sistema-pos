@@ -214,11 +214,12 @@ function initColumnResize() {
         var handle = document.createElement('div');
         handle.className = 'col-resizer';
         th.appendChild(handle);
-        handle.addEventListener('mousedown', function (e) {
+        handle.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           e.stopPropagation();
           var startX = e.clientX;
           var startW = th.getBoundingClientRect().width;
+          handle.setPointerCapture(e.pointerId);
           function onMove(ev) {
             var delta = ev.clientX - startX;
             var w = Math.max(40, startW + delta);
@@ -226,15 +227,13 @@ function initColumnResize() {
             th.style.minWidth = w + 'px';
           }
           function onUp() {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
+            handle.removeEventListener('pointermove', onMove);
+            handle.removeEventListener('pointerup', onUp);
+            handle.removeEventListener('pointercancel', onUp);
           }
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
-          document.body.style.cursor = 'col-resize';
-          document.body.style.userSelect = 'none';
+          handle.addEventListener('pointermove', onMove);
+          handle.addEventListener('pointerup', onUp);
+          handle.addEventListener('pointercancel', onUp);
         });
       })(ths[i], i);
     }

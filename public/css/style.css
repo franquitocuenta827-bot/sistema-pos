@@ -43,9 +43,9 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{padding:.65rem .75rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text)}
 th{font-weight:600;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;background:var(--bg);position:sticky;top:0}
 th{position:relative}
-th .col-resizer{position:absolute;right:0;top:0;width:8px;height:100%;cursor:col-resize;user-select:none;z-index:2}
-th .col-resizer::after{content:'';position:absolute;right:3px;top:15%;bottom:15%;width:2px;background:var(--border);border-radius:2px}
-th .col-resizer:hover::after{background:var(--primary)}
+th .col-resizer{position:absolute;right:0;top:0;width:10px;height:100%;cursor:col-resize;user-select:none;z-index:2;touch-action:none}
+th .col-resizer::after{content:'';position:absolute;right:4px;top:15%;bottom:15%;width:2px;background:var(--border);border-radius:2px}
+th .col-resizer:hover::after,th .col-resizer:active::after{background:var(--primary);width:3px}
 table.resizable{table-layout:fixed;width:100%}
 table.resizable th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 table.resizable td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
