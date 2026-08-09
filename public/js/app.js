@@ -203,20 +203,27 @@ function initColumnResize() {
     table.dataset.resizable = '1';
     table.classList.add('resizable');
     var ths = table.querySelectorAll('thead th');
+    var cols = table.querySelectorAll('thead th, tbody tr:first-child td');
     for (var i = 0; i < ths.length; i++) {
-      (function (th) {
+      (function (th, idx) {
+        if (!th.style.width) {
+          var cur = th.getBoundingClientRect().width;
+          th.style.width = Math.max(60, cur) + 'px';
+        }
         if (th.querySelector('.col-resizer')) return;
         var handle = document.createElement('div');
         handle.className = 'col-resizer';
         th.appendChild(handle);
         handle.addEventListener('mousedown', function (e) {
           e.preventDefault();
+          e.stopPropagation();
           var startX = e.clientX;
           var startW = th.getBoundingClientRect().width;
           function onMove(ev) {
             var delta = ev.clientX - startX;
-            th.style.width = Math.max(40, startW + delta) + 'px';
-            th.style.minWidth = Math.max(40, startW + delta) + 'px';
+            var w = Math.max(40, startW + delta);
+            th.style.width = w + 'px';
+            th.style.minWidth = w + 'px';
           }
           function onUp() {
             document.removeEventListener('mousemove', onMove);
@@ -229,7 +236,7 @@ function initColumnResize() {
           document.body.style.cursor = 'col-resize';
           document.body.style.userSelect = 'none';
         });
-      })(ths[i]);
+      })(ths[i], i);
     }
   }
 }
