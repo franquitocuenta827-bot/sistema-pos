@@ -41,6 +41,7 @@ async function doLogin() {
     document.getElementById('userRole').textContent = user.role === 'admin' ? 'Admin' : user.role === 'operator' ? 'Operador' : 'Vendedor';
     applyRoleVisibility(user.role);
     applyCompactPref();
+    watchTables();
     navigate('dashboard');
   } catch (e) { err.style.display = 'block'; }
 }
@@ -192,6 +193,55 @@ function openModal(title, bodyHtml, saveCallback, footerHtml) {
 
 function closeModal() { document.getElementById('modal').classList.remove('active'); modalCallback = null; }
 function modalSave() { if (modalCallback) modalCallback(); }
+
+// ==================== COLUMNAS REDIMENSIONABLES ====================
+function initColumnResize() {
+  var tables = document.querySelectorAll('table');
+  for (var t = 0; t < tables.length; t++) {
+    var table = tables[t];
+    if (table.dataset.resizable === '1') continue;
+    table.dataset.resizable = '1';
+    table.classList.add('resizable');
+    var ths = table.querySelectorAll('thead th');
+    for (var i = 0; i < ths.length; i++) {
+      (function (th) {
+        if (th.querySelector('.col-resizer')) return;
+        var handle = document.createElement('div');
+        handle.className = 'col-resizer';
+        th.appendChild(handle);
+        handle.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          var startX = e.clientX;
+          var startW = th.getBoundingClientRect().width;
+          function onMove(ev) {
+            var delta = ev.clientX - startX;
+            th.style.width = Math.max(40, startW + delta) + 'px';
+            th.style.minWidth = Math.max(40, startW + delta) + 'px';
+          }
+          function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        });
+      })(ths[i]);
+    }
+  }
+}
+
+function watchTables() {
+  if (window._tableObserver) return;
+  window._tableObserver = new MutationObserver(function () {
+    initColumnResize();
+  });
+  window._tableObserver.observe(document.body, { childList: true, subtree: true });
+  initColumnResize();
+}
 
 // ==================== VISTA COMPACTA ====================
 function toggleCompact() {
