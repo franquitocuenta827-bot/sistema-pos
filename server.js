@@ -163,7 +163,7 @@ app.get('/api/products', auth, (req, res) => {
   const params = [];
   if (search) { sql += " AND (p.name LIKE ? OR p.barcode LIKE ? OR p.description1 LIKE ? OR p.description2 LIKE ?)"; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
   if (category_id) { sql += " AND p.category_id = ?"; params.push(category_id); }
-  if (low_stock) { sql += " AND p.stock <= p.min_stock"; }
+  if (low_stock) { sql += " AND p.stock <= p.min_stock AND p.min_stock > 0"; }
   sql += " ORDER BY p.name";
   res.json(queryAll(sql, params));
 });

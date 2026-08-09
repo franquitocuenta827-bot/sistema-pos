@@ -40,6 +40,7 @@ async function doLogin() {
     document.getElementById('userName').textContent = user.full_name || user.username;
     document.getElementById('userRole').textContent = user.role === 'admin' ? 'Admin' : user.role === 'operator' ? 'Operador' : 'Vendedor';
     applyRoleVisibility(user.role);
+    applyCompactPref();
     navigate('dashboard');
   } catch (e) { err.style.display = 'block'; }
 }
@@ -192,6 +193,21 @@ function openModal(title, bodyHtml, saveCallback, footerHtml) {
 function closeModal() { document.getElementById('modal').classList.remove('active'); modalCallback = null; }
 function modalSave() { if (modalCallback) modalCallback(); }
 
+// ==================== VISTA COMPACTA ====================
+function toggleCompact() {
+  var b = document.body.classList.toggle('compact');
+  localStorage.setItem('compact', b ? '1' : '0');
+  var btn = document.getElementById('compactBtn');
+  if (btn) btn.textContent = b ? 'Vista Normal' : 'Compactar';
+}
+function applyCompactPref() {
+  if (localStorage.getItem('compact') === '1') {
+    document.body.classList.add('compact');
+    var btn = document.getElementById('compactBtn');
+    if (btn) btn.textContent = 'Vista Normal';
+  }
+}
+
 // ==================== DASHBOARD ====================
 async function loadDashboard() {
   var d = await api('GET', '/dashboard');
@@ -218,7 +234,7 @@ async function loadDashboard() {
   }
   c.innerHTML = '<div class="stats-grid">' +
     '<div class="stat-card"><div class="label">Productos</div><div class="num">' + d.total_products + '</div></div>' +
-    '<div class="stat-card' + (d.low_stock > 0 ? ' style="background:#fef2f2"' : '') + '"><div class="label">Stock Bajo</div><div class="num"' + (d.low_stock > 0 ? ' style="color:var(--danger)"' : '') + '>' + d.low_stock + '</div></div>' +
+    '<div class="stat-card' + (d.low_stock > 0 ? ' style="background:#7f1d1d66;cursor:pointer"' : ' style="cursor:pointer"') + '" onclick="showLowStockList()"><div class="label">Stock Bajo</div><div class="num"' + (d.low_stock > 0 ? ' style="color:var(--danger)"' : '') + '>' + d.low_stock + '</div><div style="font-size:.7rem;color:var(--text-muted)">Ver lista</div></div>' +
     '<div class="stat-card"><div class="label">Proveedores</div><div class="num">' + d.total_suppliers + '</div></div>' +
     '<div class="stat-card"><div class="label">Clientes</div><div class="num">' + d.total_clients + '</div></div>' +
     '<div class="stat-card"><div class="label">Ventas Hoy</div><div class="num">' + d.today_sales + '</div></div>' +
@@ -229,21 +245,108 @@ async function loadDashboard() {
     '<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">Productos Mas Vendidos</h3><table><thead><tr><th>Producto</th><th class="text-right">Cantidad</th></tr></thead><tbody>' + topHtml + '</tbody></table></div></div>';
 }
 
+async function showLowStockList() {
+  var products = await api('GET', '/products?low_stock=1') || [];
+  var html = '';
+  if (!products.length) {
+    html = '<div class="empty-state" style="padding:1rem">No hay productos con stock bajo</div>';
+  } else {
+    html += '<table><thead><tr><th>Codigo</th><th>Producto</th><th class="text-right">Stock</th><th class="text-right">Minimo</th></tr></thead><tbody>';
+    for (var i = 0; i < products.length; i++) {
+      var p = products[i];
+      html += '<tr class="row-low-stock"><td>' + escHtml(p.barcode || '') + '</td><td>' + escHtml(p.name) + '</td><td class="text-right" style="color:var(--danger);font-weight:700">' + p.stock + '</td><td class="text-right">' + p.min_stock + '</td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+  openModal('Stock Bajo (' + products.length + ' productos)', html, null,
+    '<button class="btn btn-outline" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="goToProductsLowStock()">Ir a Productos</button>');
+}
+
+var lowStockMode = false;
+function goToProductsLowStock() {
+  lowStockMode = true;
+  closeModal();
+  navigate('products');
+}
+
 // ==================== PRODUCTS ====================
  function viewProducts() {
    return '<div class="toolbar"><input class="search-input" id="prodSearch" placeholder="Buscar producto..." oninput="searchProducts()"><select id="prodCatFilter" onchange="searchProducts()"><option value="">Todas las categorias</option></select><button class="btn btn-outline" onclick="exportProducts()">Exportar Excel</button><div class="spacer"></div><span id="productsSummary" style="font-weight:600;color:var(--primary-light)"></span><button class="btn btn-primary" onclick="showProductForm()">+ Nuevo Producto</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Codigo</th><th>Nombre</th><th>Descripcion 1</th><th>Descripcion 2</th><th>Stock</th><th>Minimo</th><th>Maximo</th><th>Rubro/Familia</th><th>Observaciones</th><th class="text-right">Acciones</th></tr></thead><tbody id="productsTable"></tbody></table></div></div>';
  }
 
-async function initProducts() {
-  var cats = await api('GET', '/categories') || [];
-  var sel = document.getElementById('prodCatFilter');
-  for (var i = 0; i < cats.length; i++) {
-    var o = document.createElement('option');
-    o.value = cats[i].id;
-    o.textContent = cats[i].name;
-    sel.appendChild(o);
-  }
+function initProducts() {
+  var cats = [];
+  applyCompactPref();
+  cats = [];
+  (function loadCats() {
+    api('GET', '/categories').then(function (data) {
+      cats = data || [];
+      var sel = document.getElementById('prodCatFilter');
+      for (var i = 0; i < cats.length; i++) {
+        var o = document.createElement('option');
+        o.value = cats[i].id;
+        o.textContent = cats[i].name;
+        sel.appendChild(o);
+      }
+    }).finally(function () {
+      document.getElementById('prodSearch').value = '';
+      if (lowStockMode) {
+        lowStockMode = false;
+        showLowStockOnly();
+      } else {
+        searchProducts();
+      }
+    });
+  })();
+}
+
+function showLowStockOnly() {
+  api('GET', '/products?low_stock=1').then(function (products) {
+    products = products || [];
+    renderProducts(products);
+    document.getElementById('productsSummary').textContent = 'Stock bajo: ' + products.length;
+    var toolbar = document.querySelector('.toolbar');
+    var banner = document.createElement('div');
+    banner.setAttribute('id', 'lowStockBanner');
+    banner.style.cssText = 'background:#7f1d1d66;border:1px solid var(--danger);border-radius:8px;padding:.6rem .9rem;margin-bottom:.75rem;display:flex;align-items:center;gap:1rem;font-size:.85rem';
+    banner.innerHTML = 'Mostrando solo productos con stock bajo (' + products.length + '). <button class="btn btn-sm btn-outline" style="margin-left:auto" onclick="clearLowStockMode()">Ver todos</button>';
+    document.getElementById('content').insertBefore(banner, toolbar);
+  });
+}
+
+function clearLowStockMode() {
+  var b = document.getElementById('lowStockBanner');
+  if (b) b.parentNode.removeChild(b);
+  document.getElementById('prodSearch').value = '';
   searchProducts();
+}
+
+function renderProducts(products) {
+  var tbody = document.getElementById('productsTable');
+  var html = '';
+  var totalValor = 0;
+  for (var i = 0; i < products.length; i++) {
+    var p = products[i];
+    var low = p.stock <= p.min_stock && p.min_stock > 0;
+    var over = p.max_stock > 0 && p.stock > p.max_stock;
+    var valor = (p.cost || 0) * (p.stock || 0);
+    totalValor += valor;
+    html += '<tr class="' + (low ? 'row-low-stock' : over ? 'row-over-stock' : '') + '">' +
+      '<td>' + escHtml(p.barcode || '') + '</td>' +
+      '<td>' + escHtml(p.name) + '</td>' +
+      '<td>' + escHtml(p.description1 || '') + '</td>' +
+      '<td>' + escHtml(p.description2 || '') + '</td>' +
+      '<td style="' + (low ? 'color:var(--danger);font-weight:700' : '') + '">' + p.stock + '</td>' +
+      '<td>' + p.min_stock + '</td>' +
+      '<td>' + p.max_stock + '</td>' +
+      '<td>' + escHtml(p.category_name || '') + '</td>' +
+      '<td>' + escHtml(p.description || '') + '</td>' +
+      '<td class="text-right"><button class="btn btn-sm btn-outline" onclick="showProductForm(' + p.id + ')">Editar</button> <button class="btn btn-sm btn-danger" onclick="deleteProduct(' + p.id + ')">&times;</button></td></tr>';
+  }
+  if (!html) html = '<tr><td colspan="10" class="empty-state">Sin productos. Use buscar o cree uno nuevo.</td></tr>';
+  tbody.innerHTML = html;
+  var sum = document.getElementById('productsSummary');
+  if (sum) sum.textContent = products.length + ' productos | Valor stock: $' + totalValor.toFixed(2);
 }
 
 function searchProducts() {
@@ -252,33 +355,7 @@ function searchProducts() {
   var path = '/products?search=' + encodeURIComponent(search);
   if (cat) path += '&category_id=' + cat;
   api('GET', path).then(function (products) {
-    if (!products) products = [];
-    var tbody = document.getElementById('productsTable');
-    var html = '';
-    var totalValor = 0;
-    for (var i = 0; i < products.length; i++) {
-      var p = products[i];
-      var low = p.stock <= p.min_stock && p.min_stock > 0;
-      var over = p.max_stock > 0 && p.stock > p.max_stock;
-      var valor = (p.cost || 0) * (p.stock || 0);
-      totalValor += valor;
-      html += '<tr class="' + (low ? 'row-low-stock' : over ? 'row-over-stock' : '') + '">' +
-        '<td>' + escHtml(p.barcode || '-') + '</td>' +
-        '<td><strong>' + escHtml(p.name) + '</strong></td>' +
-        '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.description1 || '-') + '</td>' +
-        '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.description2 || '-') + '</td>' +
-        '<td><span class="badge ' + (low ? 'badge-danger' : over ? 'badge-warning' : 'badge-success') + '">' + p.stock + '</span></td>' +
-        '<td>' + p.min_stock + '</td>' +
-        '<td>' + (p.max_stock || '-') + '</td>' +
-        '<td>' + escHtml(p.category_name || '-') + '</td>' +
-        '<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.description || '-') + '</td>' +
-        '<td class="text-right"><button class="btn btn-sm btn-outline" onclick="showProductForm(' + p.id + ')">Editar</button> <button class="btn btn-sm btn-danger" onclick="deleteProduct(' + p.id + ')">Eliminar</button></td>' +
-        '</tr>';
-    }
-    if (!products.length) html = '<tr><td colspan="10" class="empty-state">Sin productos</td></tr>';
-    tbody.innerHTML = html;
-    var summary = document.getElementById('productsSummary');
-    if (summary) summary.innerHTML = 'Stock valorizado: <strong>$' + totalValor.toFixed(2) + '</strong>';
+    renderProducts(products || []);
   });
 }
 
