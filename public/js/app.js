@@ -203,40 +203,34 @@ function initColumnResize() {
     table.dataset.resizable = '1';
     table.classList.add('resizable');
     var ths = table.querySelectorAll('thead th');
-    var cols = table.querySelectorAll('thead th, tbody tr:first-child td');
     for (var i = 0; i < ths.length; i++) {
-      (function (th, idx) {
+      (function (th) {
         if (!th.style.width) {
           var cur = th.getBoundingClientRect().width;
           th.style.width = Math.max(60, cur) + 'px';
         }
-        if (th.querySelector('.col-resizer')) return;
-        var handle = document.createElement('div');
-        handle.className = 'col-resizer';
-        handle.title = 'Arrastrar para ajustar ancho de la columna';
-        th.appendChild(handle);
-        handle.addEventListener('pointerdown', function (e) {
+        th.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           e.stopPropagation();
           var startX = e.clientX;
           var startW = th.getBoundingClientRect().width;
-          handle.setPointerCapture(e.pointerId);
           function onMove(ev) {
-            var delta = ev.clientX - startX;
-            var w = Math.max(40, startW + delta);
+            var w = Math.max(40, startW + (ev.clientX - startX));
             th.style.width = w + 'px';
             th.style.minWidth = w + 'px';
           }
           function onUp() {
-            handle.removeEventListener('pointermove', onMove);
-            handle.removeEventListener('pointerup', onUp);
-            handle.removeEventListener('pointercancel', onUp);
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            document.removeEventListener('pointercancel', onUp);
+            th.classList.remove('dragging');
           }
-          handle.addEventListener('pointermove', onMove);
-          handle.addEventListener('pointerup', onUp);
-          handle.addEventListener('pointercancel', onUp);
+          th.classList.add('dragging');
+          document.addEventListener('pointermove', onMove);
+          document.addEventListener('pointerup', onUp);
+          document.addEventListener('pointercancel', onUp);
         });
-      })(ths[i], i);
+      })(ths[i]);
     }
   }
 }
