@@ -213,6 +213,7 @@ function initColumnResize() {
         if (th.querySelector('.col-resizer')) return;
         var handle = document.createElement('div');
         handle.className = 'col-resizer';
+        handle.title = 'Arrastrar para ajustar ancho de la columna';
         th.appendChild(handle);
         handle.addEventListener('pointerdown', function (e) {
           e.preventDefault();

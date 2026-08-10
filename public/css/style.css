@@ -43,9 +43,10 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{padding:.65rem .75rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text)}
 th{font-weight:600;color:var(--text-muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;background:var(--bg);position:sticky;top:0}
 th{position:relative}
-th .col-resizer{position:absolute;right:0;top:0;width:10px;height:100%;cursor:col-resize;user-select:none;z-index:2;touch-action:none}
-th .col-resizer::after{content:'';position:absolute;right:4px;top:15%;bottom:15%;width:2px;background:var(--border);border-radius:2px}
-th .col-resizer:hover::after,th .col-resizer:active::after{background:var(--primary);width:3px}
+th .col-resizer{position:absolute;right:0;top:50%;transform:translateY(-50%);width:14px;height:70%;cursor:grab;user-select:none;z-index:2;touch-action:none;display:flex;align-items:center;justify-content:center;border-radius:4px}
+th .col-resizer::after{content:'\2807';font-size:.8rem;color:var(--text-muted);line-height:1;display:block}
+th .col-resizer:hover,th .col-resizer:active{background:var(--primary);cursor:grabbing}
+th .col-resizer:hover::after{color:#fff}
 table.resizable{table-layout:fixed;width:100%}
 table.resizable th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 table.resizable td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
