@@ -337,7 +337,7 @@ app.post('/api/quotes', auth, (req, res) => {
   const quoteId = lastId();
   for (const item of items) {
     const subtotal = item.quantity * item.price;
-    db.run("INSERT INTO quote_items (quote_id, product_id, product_name, quantity, price, subtotal) VALUES (?, ?, ?, ?, ?, ?)", [quoteId, item.product_id || null, item.product_name, item.quantity, item.price, subtotal]);
+    db.run("INSERT INTO quote_items (quote_id, product_id, product_name, quantity, price, subtotal, description) VALUES (?, ?, ?, ?, ?, ?, ?)", [quoteId, item.product_id || null, item.product_name, item.quantity, item.price, subtotal, item.description || '']);
   }
   saveDb();
   res.json({ success: true, id: quoteId });
@@ -361,7 +361,7 @@ app.put('/api/quotes/:id', auth, (req, res) => {
   db.run("DELETE FROM quote_items WHERE quote_id=?", [req.params.id]);
   for (const item of items) {
     const subtotal = item.quantity * item.price;
-    db.run("INSERT INTO quote_items (quote_id, product_id, product_name, quantity, price, subtotal) VALUES (?, ?, ?, ?, ?, ?)", [req.params.id, item.product_id || null, item.product_name, item.quantity, item.price, subtotal]);
+    db.run("INSERT INTO quote_items (quote_id, product_id, product_name, quantity, price, subtotal, description) VALUES (?, ?, ?, ?, ?, ?, ?)", [req.params.id, item.product_id || null, item.product_name, item.quantity, item.price, subtotal, item.description || '']);
   }
   saveDb();
   res.json({ success: true });

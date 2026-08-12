@@ -159,9 +159,11 @@ async function initDatabase() {
     quantity INTEGER NOT NULL DEFAULT 1,
     price REAL NOT NULL DEFAULT 0,
     subtotal REAL NOT NULL DEFAULT 0,
+    description TEXT DEFAULT '',
     FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id)
   )`);
+  try { db.run("ALTER TABLE quote_items ADD COLUMN description TEXT DEFAULT ''"); } catch (e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

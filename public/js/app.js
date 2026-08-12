@@ -1429,6 +1429,8 @@ function showQuoteForm() {
       o.value = prods[i].id;
       o.textContent = prods[i].name;
       o.setAttribute('data-price', prods[i].price);
+      o.setAttribute('data-desc1', prods[i].description1 || '');
+      o.setAttribute('data-desc2', prods[i].description2 || '');
       sel.appendChild(o);
     }
   });
@@ -1446,7 +1448,9 @@ function addQuoteItem() {
     if (!price || price <= 0) return showAlert('Ingrese un precio valido', 'danger');
   }
   var name = sel.options[sel.selectedIndex].textContent;
-  window.quoteCart.push({ product_id: parseInt(sel.value), product_name: name, quantity: qty, price: price });
+  var desc1 = sel.options[sel.selectedIndex].getAttribute('data-desc1') || '';
+  var desc2 = sel.options[sel.selectedIndex].getAttribute('data-desc2') || '';
+  window.quoteCart.push({ product_id: parseInt(sel.value), product_name: name, quantity: qty, price: price, description1: desc1, description2: desc2, description: [desc1, desc2].filter(Boolean).join(' | ') });
   renderQuoteCart();
   sel.value = '';
   document.getElementById('qtQty').value = '1';
@@ -1461,7 +1465,9 @@ function renderQuoteCart() {
   for (var i = 0; i < cart.length; i++) {
     var sub = cart[i].quantity * cart[i].price;
     total += sub;
-    html += '<tr><td>' + cart[i].product_name + '</td><td>' + cart[i].quantity + '</td><td>$' + Number(cart[i].price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td><td><button class="btn btn-sm btn-danger" onclick="removeQtItem(' + i + ')">&times;</button></td></tr>';
+    html += '<tr><td>' + cart[i].product_name +
+      ((cart[i].description1 || cart[i].description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(cart[i].description1 || '') + (cart[i].description1 && cart[i].description2 ? ' | ' : '') + escHtml(cart[i].description2 || '') + '</small>' : '') +
+      '</td><td>' + cart[i].quantity + '</td><td>$' + Number(cart[i].price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td><td><button class="btn btn-sm btn-danger" onclick="removeQtItem(' + i + ')">&times;</button></td></tr>';
   }
   tbody.innerHTML = html;
   document.getElementById('qtTotal').textContent = total.toFixed(2);
@@ -1474,7 +1480,7 @@ async function viewQuoteDetail(id) {
   if (!q) return;
   var html = '<p><strong>Cliente:</strong> ' + escHtml(q.client_name || '-') + '<br><strong>Estado:</strong> ' + (q.status || 'pendiente') + '<br><strong>Notas:</strong> ' + escHtml(q.notes || '-') + '<br><strong>Fecha:</strong> ' + q.created_at + '</p>' +
     '<hr><table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>' +
-    (q.items || []).map(function (i) { return '<tr><td>' + i.product_name + '</td><td>' + i.quantity + '</td><td>$' + Number(i.price).toFixed(2) + '</td><td>$' + Number(i.subtotal).toFixed(2) + '</td></tr>'; }).join('') +
+    (q.items || []).map(function (i) { return '<tr><td>' + i.product_name + (i.description ? '<br><small style="color:var(--text-muted)">' + escHtml(i.description) + '</small>' : '') + '</td><td>' + i.quantity + '</td><td>$' + Number(i.price).toFixed(2) + '</td><td>$' + Number(i.subtotal).toFixed(2) + '</td></tr>'; }).join('') +
     '</tbody></table><hr><p style="text-align:right;font-weight:700;font-size:1.1rem">Total: $' + Number(q.total).toFixed(2) + '</p>';
   openModal('Cotizacion #' + q.id, html, null, '<button class="btn btn-outline" onclick="closeModal()">Cerrar</button>');
 }
@@ -1566,6 +1572,8 @@ async function editQuote(id) {
       o.value = prods[i].id;
       o.textContent = prods[i].name;
       o.setAttribute('data-price', prods[i].price);
+      o.setAttribute('data-desc1', prods[i].description1 || '');
+      o.setAttribute('data-desc2', prods[i].description2 || '');
       sel.appendChild(o);
     }
   });
@@ -1576,21 +1584,71 @@ async function exportQuotePdf(id) {
   var q = await api('GET', '/quotes/' + id);
   if (!q) return;
   var itemsHtml = '';
+  var n = 0;
   if (q.items) {
     for (var i = 0; i < q.items.length; i++) {
-      itemsHtml += '<tr><td>' + escHtml(q.items[i].product_name) + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
+      n++;
+      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(q.items[i].product_name) + (q.items[i].description ? '<br><span style="font-size:10px;color:#555">' + escHtml(q.items[i].description) + '</span>' : '') + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
   printHtml('<html><head><title>Cotizacion #' + q.id + '</title>' +
-    '<style>body{font-family:monospace;font-size:12px;margin:0;padding:12px 16px;max-width:300px}*{box-sizing:border-box}table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:3px 0;text-align:left}.r{text-align:right}.line{border-top:1px dashed #000;margin:8px 0}.total{font-weight:700;font-size:13px}.info{font-size:11px;line-height:1.5;margin:0}.footer{text-align:center;margin-top:10px;font-size:10px;color:#666;border-top:1px dashed #000;padding-top:8px}</style></head><body>' +
-    ticketHeader() +
-    '<p class="info"><strong>COTIZACION #' + q.id + '</strong><br>Fecha: ' + (q.created_at || '') + '<br>Cliente: ' + escHtml(q.client_name || 'General') + '<br>Estado: ' + (q.status || 'pendiente') + '</p>' +
-    (q.notes ? '<p class="info"><strong>Notas:</strong> ' + escHtml(q.notes) + '</p>' : '') +
-    '<div class="line"></div>' +
-    '<table><tr><th>Producto</th><th class="r">Cant</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>' + itemsHtml + '</table>' +
-    '<div class="line"></div>' +
-    '<p class="total" style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></p>' +
-    '<div class="footer">Validez de la oferta: 7 dias</div></body></html>');
+    '<style>' +
+    '@page{size:A4;margin:0}' +
+    'html,body{margin:0;padding:0}' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000}' +
+    '.sheet{width:210mm;height:296mm;padding:10mm 14mm;box-sizing:border-box;display:flex;flex-direction:column}' +
+    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px}' +
+    '.company h1{font-size:20px;margin:0;letter-spacing:1px}' +
+    '.company p{margin:2px 0;font-size:11px;color:#333}' +
+    '.invbox{border:1.5px solid #000;padding:8px 14px;text-align:center;min-width:230px}' +
+    '.invbox .tt{font-size:12px;font-weight:600;margin-bottom:2px}' +
+    '.invbox .num{font-size:19px;font-weight:700}' +
+    '.invbox .dt{font-size:11px;color:#333}' +
+    '.sections{display:flex;gap:16px;margin:10px 0}' +
+    '.box{flex:1;border:1px solid #999;padding:8px 12px}' +
+    '.box h3{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc;padding-bottom:3px}' +
+    '.box p{margin:2px 0;font-size:12px}' +
+    '.twrap{flex:1;display:flex;flex-direction:column;min-height:0}' +
+    'table.items{width:100%;border-collapse:collapse}' +
+    'table.items th,table.items td{border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px}' +
+    'table.items th{background:#eee}' +
+    '.r{text-align:right}' +
+    '.totals{margin-left:auto;width:46%;margin-bottom:2px}' +
+    '.trow{display:flex;justify-content:space-between;padding:4px 8px;font-size:12px}' +
+    '.trow.grand{border-top:2px solid #000;font-weight:700;font-size:14px;margin-top:4px}' +
+    '.foot{margin-top:auto;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
+    '</style></head><body>' +
+    '<div class="sheet">' +
+    '<div class="top">' +
+    '<div class="company">' +
+    '<h1>CAÑOS EMBALSE</h1>' +
+    '<p>Hipolito Yrigoyen 546</p>' +
+    '<p>Tel: 3571 637747 | canosembalse@gmail.com</p>' +
+    '</div>' +
+    '<div class="invbox">' +
+    '<div class="tt">COTIZACION</div>' +
+    '<div class="num">#' + q.id + '</div>' +
+    '<div class="dt">Fecha: ' + (q.created_at || '') + '</div>' +
+    '<div class="dt">Estado: ' + (q.status || 'pendiente') + '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="sections">' +
+    '<div class="box"><h3>Datos del Cliente</h3>' +
+    '<p><strong>' + escHtml(q.client_name || 'General') + '</strong></p>' +
+    '</div>' +
+    '<div class="box"><h3>Notas</h3>' +
+    '<p>' + escHtml(q.notes || '-') + '</p>' +
+    '</div>' +
+    '</div>' +
+    '<div class="twrap">' +
+    '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
+    '<div class="totals">' +
+    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="foot">Validez de la oferta: 7 dias</div>' +
+    '</div>' +
+    '</body></html>');
 }
 
 // ==================== PAYMENTS ====================
