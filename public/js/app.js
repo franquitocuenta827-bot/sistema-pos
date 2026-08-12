@@ -203,12 +203,14 @@ function initColumnResize() {
     table.dataset.resizable = '1';
     table.classList.add('resizable');
     var ths = table.querySelectorAll('thead th');
+    if (!ths.length) continue;
+    var key = 'colw_' + (table.id || '');
+    if (key === 'colw_') key = 'colw_' + (ths[0].textContent.trim() || 'tbl');
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { saved = {}; }
     for (var i = 0; i < ths.length; i++) {
-      (function (th) {
-        if (!th.style.width) {
-          var cur = th.getBoundingClientRect().width;
-          th.style.width = Math.max(60, cur) + 'px';
-        }
+      (function (th, idx) {
+        if (saved[idx]) { th.style.width = saved[idx] + 'px'; th.style.minWidth = saved[idx] + 'px'; }
         th.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           e.stopPropagation();
@@ -224,13 +226,19 @@ function initColumnResize() {
             document.removeEventListener('pointerup', onUp);
             document.removeEventListener('pointercancel', onUp);
             th.classList.remove('dragging');
+            try {
+              var widths = {};
+              var ths2 = table.querySelectorAll('thead th');
+              for (var j = 0; j < ths2.length; j++) widths[j] = ths2[j].getBoundingClientRect().width;
+              localStorage.setItem(key, JSON.stringify(widths));
+            } catch (e) {}
           }
           th.classList.add('dragging');
           document.addEventListener('pointermove', onMove);
           document.addEventListener('pointerup', onUp);
           document.addEventListener('pointercancel', onUp);
         });
-      })(ths[i]);
+      })(ths[i], i);
     }
   }
 }
