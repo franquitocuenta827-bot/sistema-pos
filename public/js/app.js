@@ -852,9 +852,11 @@ function renderSaleCart() {
     var item = saleCart[i];
     var sub = item.qty * item.price;
     total += sub;
-    html += '<tr><td><strong>' + escHtml(item.name) + '</strong></td><td>' +
+    html += '<tr><td><strong>' + escHtml(item.name) + '</strong>' +
+      ((item.description1 || item.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(item.description1 || '') + (item.description1 && item.description2 ? ' | ' : '') + escHtml(item.description2 || '') + '</small>' : '') +
+      '</td><td>' +
       '<button class="btn btn-sm btn-outline" onclick="saleCart[' + i + '].qty=Math.max(1,saleCart[' + i + '].qty-1);renderSaleCart()">-</button> ' +
-      item.qty + ' ' +
+      '<input type="number" min="1" value="' + item.qty + '" onchange="saleSetQty(' + i + ', this.value)" style="width:70px;text-align:center;padding:2px 4px;background:var(--bg, #fff);color:var(--text);border:1px solid var(--border);border-radius:4px" class="qty-input"> ' +
       '<button class="btn btn-sm btn-outline" onclick="saleCart[' + i + '].qty++;renderSaleCart()">+</button></td><td>$' + Number(item.price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td>' +
       '<td><button class="btn btn-sm btn-danger" onclick="saleCart.splice(' + i + ',1);renderSaleCart();updateQuickBtn()">&times;</button></td></tr>';
   }
@@ -899,10 +901,10 @@ async function searchSaleProduct() {
 function addSaleProductById(id) {
   var p = lastSearchResults.find(function(x) { return x.id === id; });
   if (!p) return;
-  addSaleProduct(p.id, p.name, p.price, p.stock);
+  addSaleProduct(p.id, p.name, p.price, p.stock, p.description1, p.description2);
 }
 
-function addSaleProduct(id, name, price, stock) {
+function addSaleProduct(id, name, price, stock, desc1, desc2) {
   for (var i = 0; i < saleCart.length; i++) {
     if (saleCart[i].product_id === id) {
       saleCart[i].qty++;
@@ -912,10 +914,16 @@ function addSaleProduct(id, name, price, stock) {
       return;
     }
   }
-  saleCart.push({ product_id: id, name: name, qty: 1, price: price });
+  saleCart.push({ product_id: id, name: name, qty: 1, price: price, description1: desc1 || '', description2: desc2 || '' });
   renderSaleCart();
   document.getElementById('vs_search').value = '';
   document.getElementById('vs_results').innerHTML = '';
+}
+
+function saleSetQty(i, val) {
+  var q = parseInt(val, 10);
+  if (isNaN(q) || q < 1) q = 1;
+  if (i >= 0 && i < saleCart.length) { saleCart[i].qty = q; renderSaleCart(); }
 }
 
 function escJs(s) {
@@ -957,7 +965,7 @@ async function quickSale() {
     var it = saleCart[i];
     var sub = it.qty * it.price;
     total += sub;
-    itemsHtml += '<tr><td>' + escHtml(it.name) + '</td><td class="text-center">' + it.qty + '</td><td class="text-right">$' + Number(it.price).toFixed(2) + '</td><td class="text-right">$' + sub.toFixed(2) + '</td></tr>';
+    itemsHtml += '<tr><td>' + escHtml(it.name) + ((it.description1 || it.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(it.description1 || '') + (it.description1 && it.description2 ? ' | ' : '') + escHtml(it.description2 || '') + '</small>' : '') + '</td><td class="text-center">' + it.qty + '</td><td class="text-right">$' + Number(it.price).toFixed(2) + '</td><td class="text-right">$' + sub.toFixed(2) + '</td></tr>';
   }
   var paymentLabels = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', otro: 'Otro' };
   var pagoLabel = paymentLabels[payment] || payment;
