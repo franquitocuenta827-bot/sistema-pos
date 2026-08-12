@@ -1289,32 +1289,35 @@ async function printInvoiceTicket(id) {
   var caeVtoText = inv.cae_vto ? 'Vto CAE: ' + inv.cae_vto : '';
   printHtml('<html><head><title>Factura ' + inv.invoice_number + '</title>' +
     '<style>' +
-    '@page{size:A4;margin:15mm}' +
-    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;margin:0}' +
-    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:10px}' +
+    '@page{size:A4;margin:0}' +
+    'html,body{margin:0;padding:0}' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000}' +
+    '.sheet{width:210mm;height:296mm;padding:10mm 14mm;box-sizing:border-box;display:flex;flex-direction:column}' +
+    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px}' +
     '.company h1{font-size:20px;margin:0;letter-spacing:1px}' +
     '.company p{margin:2px 0;font-size:11px;color:#333}' +
     '.invbox{border:1.5px solid #000;padding:8px 14px;text-align:center;min-width:230px}' +
     '.invbox .tt{font-size:12px;font-weight:600;margin-bottom:2px}' +
     '.invbox .num{font-size:19px;font-weight:700}' +
     '.invbox .dt{font-size:11px;color:#333}' +
-    '.sections{display:flex;gap:16px;margin:12px 0}' +
+    '.sections{display:flex;gap:16px;margin:10px 0}' +
     '.box{flex:1;border:1px solid #999;padding:8px 12px}' +
     '.box h3{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc;padding-bottom:3px}' +
     '.box p{margin:2px 0;font-size:12px}' +
-    'table.items{width:100%;border-collapse:collapse;margin-top:10px}' +
+    '.twrap{flex:1;display:flex;flex-direction:column;min-height:0}' +
+    'table.items{width:100%;border-collapse:collapse}' +
     'table.items th,table.items td{border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px}' +
     'table.items th{background:#eee}' +
     '.r{text-align:right}' +
-    '.totals{margin-top:10px;margin-left:auto;width:46%}' +
+    '.totals{margin-left:auto;width:46%;margin-bottom:2px}' +
     '.trow{display:flex;justify-content:space-between;padding:4px 8px;font-size:12px}' +
     '.trow.grand{border-top:2px solid #000;font-weight:700;font-size:14px;margin-top:4px}' +
-    '.foot{margin-top:16px;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
+    '.foot{margin-top:auto;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
     '.discl{margin-top:6px;font-size:10px;font-weight:600;color:#c00}' +
     '</style></head><body>' +
+    '<div class="sheet">' +
     '<div class="top">' +
     '<div class="company">' +
-    (inv.client_iva && inv.client_iva !== 'Consumidor Final' ? '<p style="font-size:10px;margin:0 0 4px"><strong>CUIT:</strong> 20123456789</p>' : '') +
     '<h1>CAÑOS EMBALSE</h1>' +
     '<p>Hipolito Yrigoyen 546</p>' +
     '<p>Tel: 3571 637747 | canosembalse@gmail.com</p>' +
@@ -1337,6 +1340,7 @@ async function printInvoiceTicket(id) {
     '<p>Forma de pago: ' + fmtPay(inv.payment_method) + '</p>' +
     '</div>' +
     '</div>' +
+    '<div class="twrap">' +
     '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
     '<div class="totals">' +
     '<div class="trow"><span>Subtotal:</span><span>$' + Number(inv.subtotal || inv.total).toFixed(2) + '</span></div>' +
@@ -1345,7 +1349,9 @@ async function printInvoiceTicket(id) {
     '</div>' +
     '<div class="foot">Documento emitido por el Sistema POS de Caños Embalse' +
     (legal ? '' : '<div class="discl">DOCUMENTO NO VALIDO COMO FACTURA</div>') +
-    '</div></body></html>');
+    '</div>' +
+    '</div>' +
+    '</body></html>');
 }
 
 function shareWhatsApp(text) {
