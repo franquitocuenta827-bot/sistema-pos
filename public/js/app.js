@@ -1276,28 +1276,76 @@ async function printInvoiceTicket(id) {
   var inv = await api('GET', '/invoices/' + id);
   if (!inv) return;
   var itemsHtml = '';
+  var n = 0;
   if (inv.items) {
     for (var i = 0; i < inv.items.length; i++) {
-      itemsHtml += '<tr><td>' + escHtml(inv.items[i].product_name) + '</td><td class="r">' + inv.items[i].quantity + '</td><td class="r">$' + Number(inv.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(inv.items[i].subtotal).toFixed(2) + '</td></tr>';
+      n++;
+      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(inv.items[i].product_name) + '</td><td class="r">' + inv.items[i].quantity + '</td><td class="r">$' + Number(inv.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(inv.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
   var tipoLabel = inv.invoice_type === 'legal' ? (inv.invoice_letter ? 'Factura ' + inv.invoice_letter : 'Legal') : 'Interna';
-  var caeText = inv.cae ? 'CAE: ' + inv.cae + (inv.cae_vto ? '  Vto: ' + inv.cae_vto : '') : 'S/C';
-  var totalText = 'Total: $' + Number(inv.total).toFixed(2);
-  var wsText = 'Factura ' + inv.invoice_number + ' - ' + totalText;
-  printHtml('<html><head><title>Ticket ' + inv.invoice_number + '</title>' +
-    '<style>body{font-family:monospace;font-size:12px;margin:0;padding:12px 16px;max-width:300px}*{box-sizing:border-box}table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:3px 0;text-align:left}.r{text-align:right}.line{border-top:1px dashed #000;margin:8px 0}.total{font-weight:700;font-size:13px}.info{font-size:11px;line-height:1.5;margin:0}.footer{text-align:center;margin-top:10px;font-size:10px;color:#666;border-top:1px dashed #000;padding-top:8px}</style></head><body>' +
-    ticketHeader() +
-    '<p class="info"><strong>' + tipoLabel + ' ' + escHtml(inv.invoice_number) + '</strong><br>Fecha: ' + (inv.created_at || '') + '<br>' + caeText + '<br>Vendedor: ' + (inv.user_name || '-') + '</p>' +
-    '<div class="line"></div>' +
-    '<p class="info"><strong>Cliente:</strong> ' + escHtml(inv.client_name) + '<br><strong>CUIT:</strong> ' + (inv.client_cuit || '-') + '<br><strong>IVA:</strong> ' + (inv.client_iva || '-') + '<br><strong>Pago:</strong> ' + fmtPay(inv.payment_method) + '</p>' +
-    '<div class="line"></div>' +
-    '<table><tr><th>Producto</th><th class="r">Cant</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>' + itemsHtml + '</table>' +
-    '<div class="line"></div>' +
-    '<p style="display:flex;justify-content:space-between;font-size:11px"><span>Subtotal:</span><span>$' + Number(inv.subtotal || inv.total).toFixed(2) + '</span></p>' +
-    (inv.iva_total > 0 ? '<p style="display:flex;justify-content:space-between;font-size:11px"><span>IVA:</span><span>$' + Number(inv.iva_total).toFixed(2) + '</span></p>' : '') +
-    '<p class="total" style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>$' + Number(inv.total).toFixed(2) + '</span></p>' +
-    '<div class="footer">Gracias por su compra</div></body></html>');
+  var legal = inv.invoice_type === 'legal' && inv.cae;
+  var caeText = inv.cae ? 'CAE: ' + inv.cae : '';
+  var caeVtoText = inv.cae_vto ? 'Vto CAE: ' + inv.cae_vto : '';
+  printHtml('<html><head><title>Factura ' + inv.invoice_number + '</title>' +
+    '<style>' +
+    '@page{size:A4;margin:15mm}' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;margin:0}' +
+    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:10px}' +
+    '.company h1{font-size:20px;margin:0;letter-spacing:1px}' +
+    '.company p{margin:2px 0;font-size:11px;color:#333}' +
+    '.invbox{border:1.5px solid #000;padding:8px 14px;text-align:center;min-width:230px}' +
+    '.invbox .tt{font-size:12px;font-weight:600;margin-bottom:2px}' +
+    '.invbox .num{font-size:19px;font-weight:700}' +
+    '.invbox .dt{font-size:11px;color:#333}' +
+    '.sections{display:flex;gap:16px;margin:12px 0}' +
+    '.box{flex:1;border:1px solid #999;padding:8px 12px}' +
+    '.box h3{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc;padding-bottom:3px}' +
+    '.box p{margin:2px 0;font-size:12px}' +
+    'table.items{width:100%;border-collapse:collapse;margin-top:10px}' +
+    'table.items th,table.items td{border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px}' +
+    'table.items th{background:#eee}' +
+    '.r{text-align:right}' +
+    '.totals{margin-top:10px;margin-left:auto;width:46%}' +
+    '.trow{display:flex;justify-content:space-between;padding:4px 8px;font-size:12px}' +
+    '.trow.grand{border-top:2px solid #000;font-weight:700;font-size:14px;margin-top:4px}' +
+    '.foot{margin-top:16px;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
+    '.discl{margin-top:6px;font-size:10px;font-weight:600;color:#c00}' +
+    '</style></head><body>' +
+    '<div class="top">' +
+    '<div class="company">' +
+    (inv.client_iva && inv.client_iva !== 'Consumidor Final' ? '<p style="font-size:10px;margin:0 0 4px"><strong>CUIT:</strong> 20123456789</p>' : '') +
+    '<h1>CAÑOS EMBALSE</h1>' +
+    '<p>Hipolito Yrigoyen 546</p>' +
+    '<p>Tel: 3571 637747 | canosembalse@gmail.com</p>' +
+    '</div>' +
+    '<div class="invbox">' +
+    '<div class="tt">' + tipoLabel + '</div>' +
+    '<div class="num">' + escHtml(inv.invoice_number) + '</div>' +
+    '<div class="dt">Fecha: ' + (inv.created_at || '') + '</div>' +
+    (caeText ? '<div class="dt">' + caeText + '</div><div class="dt">' + caeVtoText + '</div>' : '') +
+    '</div>' +
+    '</div>' +
+    '<div class="sections">' +
+    '<div class="box"><h3>Datos del Cliente</h3>' +
+    '<p><strong>' + escHtml(inv.client_name) + '</strong></p>' +
+    '<p>CUIT: ' + (inv.client_cuit || '-') + '</p>' +
+    '<p>Condicion IVA: ' + (inv.client_iva || 'Consumidor Final') + '</p>' +
+    '</div>' +
+    '<div class="box"><h3>Datos de la Venta</h3>' +
+    '<p>Vendedor: ' + (inv.user_name || '-') + '</p>' +
+    '<p>Forma de pago: ' + fmtPay(inv.payment_method) + '</p>' +
+    '</div>' +
+    '</div>' +
+    '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
+    '<div class="totals">' +
+    '<div class="trow"><span>Subtotal:</span><span>$' + Number(inv.subtotal || inv.total).toFixed(2) + '</span></div>' +
+    (inv.iva_total > 0 ? '<div class="trow"><span>IVA:</span><span>$' + Number(inv.iva_total).toFixed(2) + '</span></div>' : '') +
+    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(inv.total).toFixed(2) + '</span></div>' +
+    '</div>' +
+    '<div class="foot">Documento emitido por el Sistema POS de Caños Embalse' +
+    (legal ? '' : '<div class="discl">DOCUMENTO NO VALIDO COMO FACTURA</div>') +
+    '</div></body></html>');
 }
 
 function shareWhatsApp(text) {
