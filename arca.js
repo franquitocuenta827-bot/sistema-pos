@@ -274,6 +274,55 @@ async function emitirFactura(saleId, paymentMethod) {
   return { invoiceId, invoiceNumber, invoiceLetter, cae, type: needsLegalInvoice && cae ? 'legal' : 'interna' };
 }
 
+async function emitirFacturaDePago(paymentId) {
+  const db = getDb();
+  const payment = queryOne("SELECT p.*, c.name as client_name, c.cuit as client_cuit, c.iva as client_iva, c.id as client_id FROM payments p LEFT JOIN clients c ON p.client_id = c.id WHERE p.id = ?", [paymentId]);
+  if (!payment) throw new Error('Pago no encontrado');
+  const config = queryOne("SELECT * FROM fiscal_config WHERE id = 1");
+  const needsLegalInvoice = ['tarjeta', 'transferencia'].includes(payment.payment_method);
+  let invoiceLetter = 'INT';
+  let cae = '';
+  let caeVto = '';
+  let result = '';
+  let invoiceNumber = '';
+  let legal = false;
+
+  if (needsLegalInvoice && config && config.cuit && config.cert_crt) {
+    invoiceLetter = getIvaLetter(payment.client_iva || 'Consumidor Final', payment.payment_method || 'efectivo');
+    const ivaAliquot = getIvaAliquot(invoiceLetter);
+    const ivaTotal = payment.amount - (payment.amount / (1 + ivaAliquot / 100));
+    try {
+      const caeData = await requestCae({
+        total: payment.amount,
+        letter: invoiceLetter,
+        client_cuit: payment.client_cuit || ''
+      }, config.env_mode || 'homologacion');
+      cae = caeData.cae;
+      caeVto = caeData.cae_vto;
+      result = caeData.result;
+      invoiceNumber = caeData.invoice_number;
+      legal = true;
+    } catch (e) {
+      console.error('Error al obtener CAE en pago, se emite factura interna:', e.message);
+    }
+  }
+
+  if (!legal || !cae) {
+    invoiceLetter = 'INT';
+    invoiceNumber = generateInternalInvoiceNumber();
+  }
+
+  db.run("INSERT INTO invoices (sale_id, invoice_type, invoice_letter, invoice_number, cae, cae_vto, result, client_id, client_name, client_cuit, client_iva, total, iva_total, subtotal, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [null, legal && cae ? 'legal' : 'interna', invoiceLetter, invoiceNumber, cae, caeVto, result, payment.client_id || null, payment.client_name || 'General', payment.client_cuit || '', payment.client_iva || '', payment.amount, 0, payment.amount, payment.payment_method || 'efectivo']);
+
+  const invoiceId = lastId();
+  db.run("INSERT INTO invoice_items (invoice_id, product_name, quantity, price, subtotal, iva_aliquot, iva_amount) VALUES (?, ?, ?, ?, ?, ?)",
+    [invoiceId, payment.notes || 'Pago de cuenta corriente', 1, payment.amount, payment.amount, legal ? getIvaAliquot(invoiceLetter) : 0, 0]);
+
+  saveDb();
+  return { invoiceId, invoiceNumber, invoiceLetter, cae, type: legal && cae ? 'legal' : 'interna' };
+}
+
 async function testArcaConnection() {
   const config = queryOne("SELECT * FROM fiscal_config WHERE id = 1");
   if (!config) throw new Error('Sin configuracion fiscal');
@@ -292,4 +341,4 @@ async function testArcaConnection() {
   }
 }
 
-module.exports = { emitirFactura, testArcaConnection, getIvaLetter, generateInternalInvoiceNumber };
+module.exports = { emitirFactura, emitirFacturaDePago, testArcaConnection, getIvaLetter, generateInternalInvoiceNumber };

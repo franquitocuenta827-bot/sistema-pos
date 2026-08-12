@@ -731,7 +731,12 @@ function collectPayment(clientId) {
         var amount = parseFloat(document.getElementById('cp_amount').value);
         if (!amount || amount <= 0) return showAlert('Ingrese un monto valido', 'danger');
         var res = await api('POST', '/payments', { client_id: clientId, amount: amount, payment_method: document.getElementById('cp_method').value, notes: document.getElementById('cp_notes').value.trim() || 'Pago cuenta corriente' });
-        if (res.success) { closeModal(); loadClients(); showAlert('Pago registrado correctamente'); }
+        if (res.success) {
+          closeModal(); loadClients();
+          var inv = res.invoice;
+          if (inv) showAlert('Pago registrado - Factura ' + inv.invoiceLetter + ' ' + inv.invoiceNumber + ' emitida', 'success');
+          else showAlert('Pago registrado correctamente');
+        }
         else showAlert(res && res.error ? res.error : 'Error', 'danger');
       });
   });

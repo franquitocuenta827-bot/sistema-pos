@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const { initDatabase, getDb, saveDb, queryAll, queryOne, lastId } = require('./database');
-const { emitirFactura, testArcaConnection } = require('./arca');
+const { emitirFactura, emitirFacturaDePago, testArcaConnection } = require('./arca');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -380,13 +380,21 @@ app.get('/api/payments', auth, (req, res) => {
   res.json(p);
 });
 
-app.post('/api/payments', auth, (req, res) => {
+app.post('/api/payments', auth, async (req, res) => {
   const { client_id, sale_id, amount, payment_method, notes } = req.body;
   if (!client_id || !amount || amount <= 0) return res.status(400).json({ error: 'Cliente y monto requeridos' });
   const db = getDb();
   db.run("INSERT INTO payments (client_id, sale_id, amount, payment_method, notes) VALUES (?, ?, ?, ?, ?)", [client_id, sale_id || null, amount, payment_method || 'efectivo', notes || '']);
+  const paymentId = lastId();
   saveDb();
-  res.json({ success: true, id: lastId() });
+  const resp = { success: true, id: paymentId };
+  try {
+    const invoiceInfo = await emitirFacturaDePago(paymentId);
+    resp.invoice = invoiceInfo;
+  } catch (e) {
+    console.error('Error emitiendo factura de cobro:', e.message);
+  }
+  res.json(resp);
 });
 
 app.delete('/api/payments/:id', auth, (req, res) => {
