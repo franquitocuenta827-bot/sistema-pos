@@ -205,7 +205,7 @@ function initColumnResize() {
     var ths = table.querySelectorAll('thead th');
     if (!ths.length) continue;
     var key = 'colw_' + (table.id || '');
-    if (key === 'colw_') key = 'colw_' + (ths[0].textContent.trim() || 'tbl');
+    if (key === 'colw_') key = 'colw_' + Array.prototype.map.call(ths, function (h) { return h.textContent.trim(); }).join('|');
     var saved = {};
     try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { saved = {}; }
     for (var i = 0; i < ths.length; i++) {
@@ -411,6 +411,7 @@ function renderProducts(products) {
   tbody.innerHTML = html;
   var sum = document.getElementById('productsSummary');
   if (sum) sum.textContent = products.length + ' productos | Valor stock: $' + totalValor.toFixed(2);
+  initColumnResize();
 }
 
 function searchProducts() {
@@ -632,6 +633,7 @@ async function loadClients() {
       '<button class="btn btn-sm btn-danger" onclick="deleteClient(' + c.id + ')" title="Eliminar">Eliminar</button></td></tr>';
   }
   document.getElementById('clientsTable').innerHTML = html;
+  initColumnResize();
 }
 
 function showClientForm(id) {
