@@ -210,7 +210,12 @@ function initColumnResize() {
     try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { saved = {}; }
     for (var i = 0; i < ths.length; i++) {
       (function (th, idx) {
-        if (saved[idx]) { th.style.width = saved[idx] + 'px'; th.style.minWidth = saved[idx] + 'px'; }
+        if (!th.style.width) {
+          var cur = th.getBoundingClientRect().width;
+          if (saved[idx]) cur = saved[idx];
+          th.style.width = Math.max(60, cur) + 'px';
+          th.style.minWidth = Math.max(60, cur) + 'px';
+        }
         th.addEventListener('pointerdown', function (e) {
           e.preventDefault();
           e.stopPropagation();
