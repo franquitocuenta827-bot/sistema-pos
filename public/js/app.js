@@ -1506,15 +1506,35 @@ function filterQuoteProducts() {
   var q = (document.getElementById('qtProdSearch') && document.getElementById('qtProdSearch').value || '').toLowerCase().trim();
   var descF = (document.getElementById('qtDesc1Filter') && document.getElementById('qtDesc1Filter').value || '');
   var sel = document.getElementById('qtProduct');
-  if (!sel) return;
-  for (var i = 1; i < sel.options.length; i++) {
-    var o = sel.options[i];
-    var hay = (o.getAttribute('data-name') || '') + ' ' + (o.getAttribute('data-desc1') || '') + ' ' + (o.getAttribute('data-desc2') || '') + ' ' + o.textContent;
+  if (!sel || !window._quoteProds) return;
+  var keep = sel.options[0] ? sel.options[0].cloneNode(true) : null;
+  sel.innerHTML = '';
+  if (keep) sel.appendChild(keep);
+  var count = 0;
+  for (var i = 0; i < window._quoteProds.length; i++) {
+    var p = window._quoteProds[i];
+    var hay = (p.name || '') + ' ' + (p.description1 || '') + ' ' + (p.description2 || '');
     var okSearch = !q || hay.toLowerCase().indexOf(q) !== -1;
-    var okDesc = !descF || (o.getAttribute('data-desc1') || '') === descF;
-    var ok = okSearch && okDesc;
-    o.style.display = ok ? '' : 'none';
-    o.hidden = !ok;
+    var okDesc = !descF || (p.description1 || '') === descF;
+    if (okSearch && okDesc) {
+      var o = document.createElement('option');
+      o.value = p.id;
+      var desc = [p.description1, p.description2].filter(Boolean).join(' | ');
+      o.textContent = p.name + (desc ? ' - ' + desc : '');
+      o.setAttribute('data-price', p.price);
+      o.setAttribute('data-desc1', p.description1 || '');
+      o.setAttribute('data-desc2', p.description2 || '');
+      o.setAttribute('data-name', p.name || '');
+      sel.appendChild(o);
+      count++;
+    }
+  }
+  if (count === 0 && (q || descF)) {
+    var o2 = document.createElement('option');
+    o2.value = '';
+    o2.textContent = 'Sin resultados para "' + (q || descF) + '"';
+    o2.disabled = true;
+    sel.appendChild(o2);
   }
 }
 function removeQtItem(i) { window.quoteCart.splice(i, 1); renderQuoteCart(); }
@@ -1643,21 +1663,74 @@ async function exportQuotePdf(id) {
   var q = await api('GET', '/quotes/' + id);
   if (!q) return;
   var itemsHtml = '';
+  var n = 0;
   if (q.items) {
     for (var i = 0; i < q.items.length; i++) {
-      itemsHtml += '<tr><td>' + escHtml(q.items[i].product_name) + (q.items[i].description ? '<br><small style="color:#666;font-size:10px">' + escHtml(q.items[i].description) + '</small>' : '') + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
+      n++;
+      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(q.items[i].product_name) + (q.items[i].description ? '<br><span style="font-size:10px;color:#555">' + escHtml(q.items[i].description) + '</span>' : '') + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
-  printHtml('<html><head><title>Cotizacion #' + q.id + '</title>' +
-    '<style>body{font-family:monospace;font-size:12px;margin:0;padding:12px 16px;max-width:300px}*{box-sizing:border-box}table{width:100%;border-collapse:collapse}th,td{padding:3px 0;text-align:left}.r{text-align:right}.line{border-top:1px dashed #000;margin:8px 0}.total{font-weight:700;font-size:14px}.footer{text-align:center;margin-top:10px;font-size:10px;color:#666;border-top:1px dashed #000;padding-top:8px}.info{font-size:11px;line-height:1.5;margin:0}</style></head><body>' +
-    ticketHeader() +
-    '<p class="info"><strong>COTIZACION #' + q.id + '</strong><br>Fecha: ' + (q.created_at || '') + '<br>Vendedor: ' + (q.user_name || '-') + '<br>Cliente: ' + escHtml(q.client_name || 'General') + '<br>Estado: ' + (q.status || 'pendiente') + '</p>' +
-    '<div class="line"></div><table><tr><th>Producto</th><th class="r">Cant</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>' + (itemsHtml || '<tr><td colspan="4" style="text-align:center">Sin items</td></tr>') + '</table>' +
-    '<div class="line"></div>' +
-    '<p class="total" style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></p>' +
-    (q.notes ? '<p class="info" style="margin-top:6px"><strong>Notas:</strong> ' + escHtml(q.notes) + '</p>' : '') +
-    '<p class="info" style="margin-top:4px">Validez de la oferta: 7 dias</p>' +
-    '<div class="footer">Gracias por su consulta</div></body></html>');
+  printHtml('<html><head><title>Presupuesto #' + q.id + '</title>' +
+    '<style>' +
+    '@page{size:A4;margin:0}' +
+    'html,body{margin:0;padding:0}' +
+    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000}' +
+    '.sheet{width:210mm;height:296mm;padding:10mm 14mm;box-sizing:border-box;display:flex;flex-direction:column}' +
+    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px}' +
+    '.company h1{font-size:20px;margin:0;letter-spacing:1px}' +
+    '.company p{margin:2px 0;font-size:11px;color:#333}' +
+    '.invbox{border:1.5px solid #000;padding:8px 14px;text-align:center;min-width:230px}' +
+    '.invbox .tt{font-size:12px;font-weight:600;margin-bottom:2px}' +
+    '.invbox .num{font-size:19px;font-weight:700}' +
+    '.invbox .dt{font-size:11px;color:#333}' +
+    '.sections{display:flex;gap:16px;margin:10px 0}' +
+    '.box{flex:1;border:1px solid #999;padding:8px 12px}' +
+    '.box h3{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc;padding-bottom:3px}' +
+    '.box p{margin:2px 0;font-size:12px}' +
+    '.twrap{flex:1;display:flex;flex-direction:column;min-height:0}' +
+    'table.items{width:100%;border-collapse:collapse}' +
+    'table.items th,table.items td{border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px}' +
+    'table.items th{background:#eee}' +
+    '.r{text-align:right}' +
+    '.totals{margin-left:auto;width:46%;margin-bottom:2px}' +
+    '.trow{display:flex;justify-content:space-between;padding:4px 8px;font-size:12px}' +
+    '.trow.grand{border-top:2px solid #000;font-weight:700;font-size:14px;margin-top:4px}' +
+    '.foot{margin-top:auto;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
+    '.discl{margin-top:6px;font-size:10px;font-weight:600;color:#c00}' +
+    '</style></head><body>' +
+    '<div class="sheet">' +
+    '<div class="top">' +
+    '<div class="company">' +
+    '<h1>CAÑOS EMBALSE</h1>' +
+    '<p>Hipolito Yrigoyen 546</p>' +
+    '<p>Tel: 3571 637747 | canosembalse@gmail.com</p>' +
+    '</div>' +
+    '<div class="invbox">' +
+    '<div class="tt">PRESUPUESTO</div>' +
+    '<div class="num">#' + q.id + '</div>' +
+    '<div class="dt">Fecha: ' + (q.created_at || '') + '</div>' +
+    '<div class="dt">Estado: ' + (q.status || 'pendiente') + '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="sections">' +
+    '<div class="box"><h3>Datos del Cliente</h3>' +
+    '<p><strong>' + escHtml(q.client_name || 'General') + '</strong></p>' +
+    '</div>' +
+    '<div class="box"><h3>Datos del Presupuesto</h3>' +
+    '<p>Vendedor: ' + (q.user_name || '-') + '</p>' +
+    '<p>Validez: 7 dias</p>' +
+    '</div>' +
+    '</div>' +
+    (q.notes ? '<div class="box" style="margin:0 0 10px"><h3>Notas</h3><p>' + escHtml(q.notes) + '</p></div>' : '') +
+    '<div class="twrap">' +
+    '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
+    '<div class="totals">' +
+    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></div>' +
+    '</div>' +
+    '<div class="foot">Documento emitido por el Sistema POS de Caños Embalse<div class="discl">DOCUMENTO NO VALIDO COMO FACTURA - PRESUPUESTO VALIDO 7 DIAS</div></div>' +
+    '</div>' +
+    '</div>' +
+    '</body></html>');
 }
 
 // ==================== PAYMENTS ====================
