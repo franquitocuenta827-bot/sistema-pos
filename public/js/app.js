@@ -1376,17 +1376,24 @@ function shareEmail(inv) {
 
 // ==================== QUOTES ====================
 function viewQuotes() {
-  return '<div class="toolbar"><div class="spacer"></div><button class="btn btn-primary" onclick="showQuoteForm()">+ Nueva Cotizacion</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Usuario</th><th>Fecha</th><th class="text-right">Acciones</th></tr></thead><tbody id="quotesTable"></tbody></table></div></div>';
+  return '<div class="toolbar"><input class="search-input" id="quoteSearch" placeholder="Buscar por cliente o descripcion..." oninput="loadQuotes()"><div class="spacer"></div><button class="btn btn-primary" onclick="showQuoteForm()">+ Nueva Cotizacion</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Descripcion</th><th>Total</th><th>Estado</th><th>Usuario</th><th>Fecha</th><th class="text-right">Acciones</th></tr></thead><tbody id="quotesTable"></tbody></table></div></div>';
 }
 
 async function loadQuotes() {
   var quotes = await api('GET', '/quotes') || [];
+  var search = (document.getElementById('quoteSearch') && document.getElementById('quoteSearch').value || '').toLowerCase().trim();
+  if (search) {
+    quotes = quotes.filter(function(q) {
+      var hay = (q.client_name || '') + ' ' + (q.descriptions || '') + ' ' + (q.notes || '') + ' ' + (q.status || '') + ' ' + q.id;
+      return hay.toLowerCase().indexOf(search) !== -1;
+    });
+  }
   var html = '';
   for (var i = 0; i < quotes.length; i++) {
     var q = quotes[i];
-    html += '<tr><td>' + q.id + '</td><td>' + escHtml(q.client_name || '-') + '</td><td><strong>$' + Number(q.total).toFixed(2) + '</strong></td><td><span class="badge ' + (q.status === 'aprobada' ? 'badge-success' : q.status === 'rechazada' ? 'badge-danger' : 'badge-warning') + '">' + (q.status || 'pendiente') + '</span></td><td>' + (q.user_name || '-') + '</td><td style="font-size:.8rem">' + (q.created_at || '') + '</td><td class="text-right"><button class="btn btn-sm btn-outline" onclick="viewQuoteDetail(' + q.id + ')">Ver</button> <button class="btn btn-sm btn-primary" onclick="editQuote(' + q.id + ')">Editar</button> <button class="btn btn-sm btn-outline" onclick="setQuoteStatus(' + q.id + ')">Estado</button> <button class="btn btn-sm btn-outline" onclick="exportQuotePdf(' + q.id + ')">PDF</button> <button class="btn btn-sm btn-danger" onclick="deleteQuote(' + q.id + ')">Eliminar</button></td></tr>';
+    html += '<tr><td>' + q.id + '</td><td>' + escHtml(q.client_name || '-') + '</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.82rem" title="' + escHtml(q.descriptions || '-') + '">' + escHtml((q.descriptions || '-').substring(0, 80)) + '</td><td><strong>$' + Number(q.total).toFixed(2) + '</strong></td><td><span class="badge ' + (q.status === 'aprobada' ? 'badge-success' : q.status === 'rechazada' ? 'badge-danger' : 'badge-warning') + '">' + (q.status || 'pendiente') + '</span></td><td>' + (q.user_name || '-') + '</td><td style="font-size:.8rem">' + (q.created_at || '') + '</td><td class="text-right"><button class="btn btn-sm btn-outline" onclick="viewQuoteDetail(' + q.id + ')">Ver</button> <button class="btn btn-sm btn-primary" onclick="editQuote(' + q.id + ')">Editar</button> <button class="btn btn-sm btn-outline" onclick="setQuoteStatus(' + q.id + ')">Estado</button> <button class="btn btn-sm btn-outline" onclick="exportQuotePdf(' + q.id + ')">PDF</button> <button class="btn btn-sm btn-danger" onclick="deleteQuote(' + q.id + ')">Eliminar</button></td></tr>';
   }
-  document.getElementById('quotesTable').innerHTML = html;
+  document.getElementById('quotesTable').innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:1rem">Sin resultados</td></tr>';
 }
 
 function showQuoteForm() {
@@ -1394,6 +1401,7 @@ function showQuoteForm() {
   openModal('Nueva Cotizacion',
     '<div class="form-group"><label>Cliente</label><select id="qtClient" class="w-full"><option value="">Sin cliente</option></select></div>' +
     '<hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">' +
+    '<div style="display:flex;gap:.5rem;margin-bottom:.5rem"><input id="qtProdSearch" placeholder="Buscar por nombre o descripcion..." oninput="filterQuoteProducts()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><select id="qtDesc1Filter" onchange="filterQuoteProducts()" style="min-width:180px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Todas descripciones</option></select></div>' +
     '<div style="display:flex;gap:.5rem;margin-bottom:.75rem">' +
     '<select id="qtProduct" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Producto</option></select>' +
     '<input id="qtQty" type="number" value="1" min="1" style="width:70px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)">' +
@@ -1423,15 +1431,29 @@ function showQuoteForm() {
   });
   api('GET', '/products').then(function (prods) {
     if (!prods) return;
+    window._quoteProds = prods;
     var sel = document.getElementById('qtProduct');
+    var descSet = {};
+    var descSel = document.getElementById('qtDesc1Filter');
     for (var i = 0; i < prods.length; i++) {
       var o = document.createElement('option');
       o.value = prods[i].id;
-      o.textContent = prods[i].name;
+      var desc = [prods[i].description1, prods[i].description2].filter(Boolean).join(' | ');
+      o.textContent = prods[i].name + (desc ? ' - ' + desc : '');
       o.setAttribute('data-price', prods[i].price);
       o.setAttribute('data-desc1', prods[i].description1 || '');
       o.setAttribute('data-desc2', prods[i].description2 || '');
+      o.setAttribute('data-name', prods[i].name || '');
       sel.appendChild(o);
+      if (prods[i].description1) descSet[prods[i].description1] = 1;
+    }
+    if (descSel) {
+      Object.keys(descSet).sort().forEach(function(d) {
+        var o = document.createElement('option');
+        o.value = d;
+        o.textContent = d;
+        descSel.appendChild(o);
+      });
     }
   });
 
@@ -1473,6 +1495,21 @@ function renderQuoteCart() {
   document.getElementById('qtTotal').textContent = total.toFixed(2);
 }
 
+function filterQuoteProducts() {
+  var q = (document.getElementById('qtProdSearch') && document.getElementById('qtProdSearch').value || '').toLowerCase().trim();
+  var descF = (document.getElementById('qtDesc1Filter') && document.getElementById('qtDesc1Filter').value || '');
+  var sel = document.getElementById('qtProduct');
+  if (!sel) return;
+  for (var i = 1; i < sel.options.length; i++) {
+    var o = sel.options[i];
+    var hay = (o.getAttribute('data-name') || '') + ' ' + (o.getAttribute('data-desc1') || '') + ' ' + (o.getAttribute('data-desc2') || '') + ' ' + o.textContent;
+    var okSearch = !q || hay.toLowerCase().indexOf(q) !== -1;
+    var okDesc = !descF || (o.getAttribute('data-desc1') || '') === descF;
+    var ok = okSearch && okDesc;
+    o.style.display = ok ? '' : 'none';
+    o.hidden = !ok;
+  }
+}
 function removeQtItem(i) { window.quoteCart.splice(i, 1); renderQuoteCart(); }
 
 async function viewQuoteDetail(id) {
@@ -1528,6 +1565,7 @@ async function editQuote(id) {
   openModal('Editar Cotizacion #' + id,
     '<div class="form-group"><label>Cliente</label><select id="qtClient" class="w-full"><option value="">Sin cliente</option></select></div>' +
     '<hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">' +
+    '<div style="display:flex;gap:.5rem;margin-bottom:.5rem"><input id="qtProdSearch" placeholder="Buscar por nombre o descripcion..." oninput="filterQuoteProducts()" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><select id="qtDesc1Filter" onchange="filterQuoteProducts()" style="min-width:180px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Todas descripciones</option></select></div>' +
     '<div style="display:flex;gap:.5rem;margin-bottom:.75rem">' +
     '<select id="qtProduct" style="flex:1;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Producto</option></select>' +
     '<input id="qtQty" type="number" value="1" min="1" style="width:70px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)">' +
@@ -1566,15 +1604,29 @@ async function editQuote(id) {
   });
   api('GET', '/products').then(function (prods) {
     if (!prods) return;
+    window._quoteProds = prods;
     var sel = document.getElementById('qtProduct');
+    var descSet = {};
+    var descSel = document.getElementById('qtDesc1Filter');
     for (var i = 0; i < prods.length; i++) {
       var o = document.createElement('option');
       o.value = prods[i].id;
-      o.textContent = prods[i].name;
+      var desc = [prods[i].description1, prods[i].description2].filter(Boolean).join(' | ');
+      o.textContent = prods[i].name + (desc ? ' - ' + desc : '');
       o.setAttribute('data-price', prods[i].price);
       o.setAttribute('data-desc1', prods[i].description1 || '');
       o.setAttribute('data-desc2', prods[i].description2 || '');
+      o.setAttribute('data-name', prods[i].name || '');
       sel.appendChild(o);
+      if (prods[i].description1) descSet[prods[i].description1] = 1;
+    }
+    if (descSel) {
+      Object.keys(descSet).sort().forEach(function(d) {
+        var o = document.createElement('option');
+        o.value = d;
+        o.textContent = d;
+        descSel.appendChild(o);
+      });
     }
   });
   renderQuoteCart();
@@ -1584,71 +1636,21 @@ async function exportQuotePdf(id) {
   var q = await api('GET', '/quotes/' + id);
   if (!q) return;
   var itemsHtml = '';
-  var n = 0;
   if (q.items) {
     for (var i = 0; i < q.items.length; i++) {
-      n++;
-      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(q.items[i].product_name) + (q.items[i].description ? '<br><span style="font-size:10px;color:#555">' + escHtml(q.items[i].description) + '</span>' : '') + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
+      itemsHtml += '<tr><td>' + escHtml(q.items[i].product_name) + (q.items[i].description ? '<br><small style="color:#666;font-size:10px">' + escHtml(q.items[i].description) + '</small>' : '') + '</td><td class="r">' + q.items[i].quantity + '</td><td class="r">$' + Number(q.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(q.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
   printHtml('<html><head><title>Cotizacion #' + q.id + '</title>' +
-    '<style>' +
-    '@page{size:A4;margin:0}' +
-    'html,body{margin:0;padding:0}' +
-    'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000}' +
-    '.sheet{width:210mm;height:296mm;padding:10mm 14mm;box-sizing:border-box;display:flex;flex-direction:column}' +
-    '.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:8px}' +
-    '.company h1{font-size:20px;margin:0;letter-spacing:1px}' +
-    '.company p{margin:2px 0;font-size:11px;color:#333}' +
-    '.invbox{border:1.5px solid #000;padding:8px 14px;text-align:center;min-width:230px}' +
-    '.invbox .tt{font-size:12px;font-weight:600;margin-bottom:2px}' +
-    '.invbox .num{font-size:19px;font-weight:700}' +
-    '.invbox .dt{font-size:11px;color:#333}' +
-    '.sections{display:flex;gap:16px;margin:10px 0}' +
-    '.box{flex:1;border:1px solid #999;padding:8px 12px}' +
-    '.box h3{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc;padding-bottom:3px}' +
-    '.box p{margin:2px 0;font-size:12px}' +
-    '.twrap{flex:1;display:flex;flex-direction:column;min-height:0}' +
-    'table.items{width:100%;border-collapse:collapse}' +
-    'table.items th,table.items td{border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px}' +
-    'table.items th{background:#eee}' +
-    '.r{text-align:right}' +
-    '.totals{margin-left:auto;width:46%;margin-bottom:2px}' +
-    '.trow{display:flex;justify-content:space-between;padding:4px 8px;font-size:12px}' +
-    '.trow.grand{border-top:2px solid #000;font-weight:700;font-size:14px;margin-top:4px}' +
-    '.foot{margin-top:auto;font-size:10px;color:#555;border-top:1px solid #999;padding-top:8px}' +
-    '</style></head><body>' +
-    '<div class="sheet">' +
-    '<div class="top">' +
-    '<div class="company">' +
-    '<h1>CAÑOS EMBALSE</h1>' +
-    '<p>Hipolito Yrigoyen 546</p>' +
-    '<p>Tel: 3571 637747 | canosembalse@gmail.com</p>' +
-    '</div>' +
-    '<div class="invbox">' +
-    '<div class="tt">COTIZACION</div>' +
-    '<div class="num">#' + q.id + '</div>' +
-    '<div class="dt">Fecha: ' + (q.created_at || '') + '</div>' +
-    '<div class="dt">Estado: ' + (q.status || 'pendiente') + '</div>' +
-    '</div>' +
-    '</div>' +
-    '<div class="sections">' +
-    '<div class="box"><h3>Datos del Cliente</h3>' +
-    '<p><strong>' + escHtml(q.client_name || 'General') + '</strong></p>' +
-    '</div>' +
-    '<div class="box"><h3>Notas</h3>' +
-    '<p>' + escHtml(q.notes || '-') + '</p>' +
-    '</div>' +
-    '</div>' +
-    '<div class="twrap">' +
-    '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
-    '<div class="totals">' +
-    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></div>' +
-    '</div>' +
-    '</div>' +
-    '<div class="foot">Validez de la oferta: 7 dias</div>' +
-    '</div>' +
-    '</body></html>');
+    '<style>body{font-family:monospace;font-size:12px;margin:0;padding:12px 16px;max-width:300px}*{box-sizing:border-box}table{width:100%;border-collapse:collapse}th,td{padding:3px 0;text-align:left}.r{text-align:right}.line{border-top:1px dashed #000;margin:8px 0}.total{font-weight:700;font-size:14px}.footer{text-align:center;margin-top:10px;font-size:10px;color:#666;border-top:1px dashed #000;padding-top:8px}.info{font-size:11px;line-height:1.5;margin:0}</style></head><body>' +
+    ticketHeader() +
+    '<p class="info"><strong>COTIZACION #' + q.id + '</strong><br>Fecha: ' + (q.created_at || '') + '<br>Vendedor: ' + (q.user_name || '-') + '<br>Cliente: ' + escHtml(q.client_name || 'General') + '<br>Estado: ' + (q.status || 'pendiente') + '</p>' +
+    '<div class="line"></div><table><tr><th>Producto</th><th class="r">Cant</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>' + (itemsHtml || '<tr><td colspan="4" style="text-align:center">Sin items</td></tr>') + '</table>' +
+    '<div class="line"></div>' +
+    '<p class="total" style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></p>' +
+    (q.notes ? '<p class="info" style="margin-top:6px"><strong>Notas:</strong> ' + escHtml(q.notes) + '</p>' : '') +
+    '<p class="info" style="margin-top:4px">Validez de la oferta: 7 dias</p>' +
+    '<div class="footer">Gracias por su consulta</div></body></html>');
 }
 
 // ==================== PAYMENTS ====================

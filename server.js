@@ -316,7 +316,7 @@ app.get('/api/clients/:id/account', auth, (req, res) => {
 
 // ==================== QUOTES ====================
 app.get('/api/quotes', auth, (req, res) => {
-  const q = queryAll("SELECT q.*, c.name as client_name, u.full_name as user_name FROM quotes q LEFT JOIN clients c ON q.client_id = c.id LEFT JOIN users u ON q.user_id = u.id ORDER BY q.created_at DESC");
+  const q = queryAll("SELECT q.*, c.name as client_name, u.full_name as user_name, (SELECT GROUP_CONCAT(quote_items.description, ' | ') FROM quote_items WHERE quote_items.quote_id = q.id) as descriptions FROM quotes q LEFT JOIN clients c ON q.client_id = c.id LEFT JOIN users u ON q.user_id = u.id ORDER BY q.created_at DESC");
   res.json(q);
 });
 
