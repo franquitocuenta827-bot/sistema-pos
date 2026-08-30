@@ -1716,12 +1716,10 @@ async function exportQuotePdf(id) {
     '<div class="box"><h3>Datos del Cliente</h3>' +
     '<p><strong>' + escHtml(q.client_name || 'General') + '</strong></p>' +
     '</div>' +
-    '<div class="box"><h3>Datos del Presupuesto</h3>' +
-    '<p>Vendedor: ' + (q.user_name || '-') + '</p>' +
-    '<p>Validez: 7 dias</p>' +
+    '<div class="box"><h3>Validez</h3>' +
+    '<p>7 dias</p>' +
     '</div>' +
     '</div>' +
-    (q.notes ? '<div class="box" style="margin:0 0 10px"><h3>Notas</h3><p>' + escHtml(q.notes) + '</p></div>' : '') +
     '<div class="twrap">' +
     '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
     '<div class="totals">' +
