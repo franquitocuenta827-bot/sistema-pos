@@ -111,9 +111,11 @@ async function initDatabase() {
     quantity INTEGER NOT NULL DEFAULT 1,
     price REAL NOT NULL DEFAULT 0,
     subtotal REAL NOT NULL DEFAULT 0,
+    description TEXT DEFAULT '',
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id)
   )`);
+  try { db.run("ALTER TABLE sale_items ADD COLUMN description TEXT DEFAULT ''"); } catch (e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS purchases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,10 +239,12 @@ async function initDatabase() {
     quantity INTEGER NOT NULL DEFAULT 1,
     price REAL NOT NULL DEFAULT 0,
     subtotal REAL NOT NULL DEFAULT 0,
+    description TEXT DEFAULT '',
     iva_aliquot REAL DEFAULT 21,
     iva_amount REAL DEFAULT 0,
     FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
   )`);
+  try { db.run("ALTER TABLE invoice_items ADD COLUMN description TEXT DEFAULT ''"); } catch (e) {}
 
   try { db.run("ALTER TABLE fiscal_config ADD COLUMN cert_crt TEXT DEFAULT ''"); } catch (e) {}
   try { db.run("ALTER TABLE fiscal_config ADD COLUMN cert_key TEXT DEFAULT ''"); } catch (e) {}

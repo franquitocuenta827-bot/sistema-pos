@@ -438,7 +438,8 @@ app.post('/api/sales', auth, async (req, res) => {
 
   for (const item of items) {
     const subtotal = item.quantity * item.price;
-    db.run("INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, subtotal) VALUES (?, ?, ?, ?, ?, ?)", [saleId, item.product_id, item.product_name, item.quantity, item.price, subtotal]);
+    const desc = item.description || [item.description1, item.description2].filter(Boolean).join(' | ') || '';
+    db.run("INSERT INTO sale_items (sale_id, product_id, product_name, quantity, price, subtotal, description) VALUES (?, ?, ?, ?, ?, ?, ?)", [saleId, item.product_id, item.product_name, item.quantity, item.price, subtotal, desc]);
     db.run("UPDATE products SET stock = stock - ? WHERE id = ? AND active = 1", [item.quantity, item.product_id]);
   }
   saveDb();

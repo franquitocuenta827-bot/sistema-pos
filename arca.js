@@ -262,8 +262,8 @@ async function emitirFactura(saleId, paymentMethod) {
 
   const invoiceId = lastId();
   for (const item of items) {
-    db.run("INSERT INTO invoice_items (invoice_id, product_name, quantity, price, subtotal, iva_aliquot, iva_amount) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [invoiceId, item.product_name, item.quantity, item.price, item.subtotal, 21, 0]);
+    db.run("INSERT INTO invoice_items (invoice_id, product_name, quantity, price, subtotal, description, iva_aliquot, iva_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [invoiceId, item.product_name, item.quantity, item.price, item.subtotal, item.description || '', 21, 0]);
   }
 
   try { db.run("ALTER TABLE invoices ADD COLUMN invoice_letter TEXT DEFAULT ''"); } catch (e) {}

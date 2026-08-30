@@ -183,6 +183,11 @@ function openModal(title, bodyHtml, saveCallback, footerHtml) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = bodyHtml;
   document.getElementById('modal').classList.add('active');
+  var m = document.querySelector('.modal');
+  if (m) {
+    if (title && title.indexOf('Cotizacion') !== -1) m.classList.add('modal-wide');
+    else m.classList.remove('modal-wide');
+  }
   modalCallback = saveCallback || null;
   if (footerHtml) {
     document.getElementById('modalFooter').innerHTML = footerHtml;
@@ -994,7 +999,7 @@ async function quickSale() {
       var btn = document.getElementById('btnQuickSale');
       btn.disabled = true;
       btn.textContent = 'Procesando...';
-      var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price }; });
+      var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
       var res = await api('POST', '/sales', { items: items, discount: 0, payment_method: payment, client_id: clientId });
       btn.disabled = false;
       if (res && res.success) {
@@ -1257,7 +1262,8 @@ async function printTicket(id) {
   var itemsHtml = '';
   if (sale.items) {
     for (var i = 0; i < sale.items.length; i++) {
-      itemsHtml += '<tr><td>' + escHtml(sale.items[i].product_name) + '</td><td class="r">' + sale.items[i].quantity + '</td><td class="r">$' + Number(sale.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(sale.items[i].subtotal).toFixed(2) + '</td></tr>';
+      var desc = sale.items[i].description ? '<br><small style="color:#666;font-size:10px">' + escHtml(sale.items[i].description) + '</small>' : '';
+      itemsHtml += '<tr><td>' + escHtml(sale.items[i].product_name) + desc + '</td><td class="r">' + sale.items[i].quantity + '</td><td class="r">$' + Number(sale.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(sale.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
   printHtml('<html><head><title>Ticket #' + sale.id + '</title>' +
@@ -1280,7 +1286,8 @@ async function printInvoiceTicket(id) {
   if (inv.items) {
     for (var i = 0; i < inv.items.length; i++) {
       n++;
-      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(inv.items[i].product_name) + '</td><td class="r">' + inv.items[i].quantity + '</td><td class="r">$' + Number(inv.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(inv.items[i].subtotal).toFixed(2) + '</td></tr>';
+      var descInv = inv.items[i].description ? '<br><span style="font-size:10px;color:#555">' + escHtml(inv.items[i].description) + '</span>' : '';
+      itemsHtml += '<tr><td>' + n + '</td><td>' + escHtml(inv.items[i].product_name) + descInv + '</td><td class="r">' + inv.items[i].quantity + '</td><td class="r">$' + Number(inv.items[i].price).toFixed(2) + '</td><td class="r">$' + Number(inv.items[i].subtotal).toFixed(2) + '</td></tr>';
     }
   }
   var tipoLabel = inv.invoice_type === 'legal' ? (inv.invoice_letter ? 'Factura ' + inv.invoice_letter : 'Legal') : 'Interna';
@@ -1376,7 +1383,7 @@ function shareEmail(inv) {
 
 // ==================== QUOTES ====================
 function viewQuotes() {
-  return '<div class="toolbar"><input class="search-input" id="quoteSearch" placeholder="Buscar por cliente o descripcion..." oninput="loadQuotes()"><div class="spacer"></div><button class="btn btn-primary" onclick="showQuoteForm()">+ Nueva Cotizacion</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Descripcion</th><th>Total</th><th>Estado</th><th>Usuario</th><th>Fecha</th><th class="text-right">Acciones</th></tr></thead><tbody id="quotesTable"></tbody></table></div></div>';
+  return '<div class="toolbar"><input class="search-input" id="quoteSearch" placeholder="Buscar por cliente o descripcion..." oninput="loadQuotes()" style="min-width:280px"><div class="spacer"></div><button class="btn btn-primary" onclick="showQuoteForm()">+ Nueva Cotizacion</button></div><div class="card" style="padding:1.5rem"><div class="table-wrap" style="overflow-x:auto"><table style="font-size:.95rem"><thead><tr><th style="min-width:50px">#</th><th style="min-width:140px">Cliente</th><th style="min-width:280px">Descripcion</th><th class="text-right" style="min-width:100px">Total</th><th style="min-width:100px">Estado</th><th style="min-width:110px">Usuario</th><th style="min-width:130px">Fecha</th><th class="text-right" style="min-width:280px">Acciones</th></tr></thead><tbody id="quotesTable"></tbody></table></div></div>';
 }
 
 async function loadQuotes() {
@@ -1391,7 +1398,7 @@ async function loadQuotes() {
   var html = '';
   for (var i = 0; i < quotes.length; i++) {
     var q = quotes[i];
-    html += '<tr><td>' + q.id + '</td><td>' + escHtml(q.client_name || '-') + '</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.82rem" title="' + escHtml(q.descriptions || '-') + '">' + escHtml((q.descriptions || '-').substring(0, 80)) + '</td><td><strong>$' + Number(q.total).toFixed(2) + '</strong></td><td><span class="badge ' + (q.status === 'aprobada' ? 'badge-success' : q.status === 'rechazada' ? 'badge-danger' : 'badge-warning') + '">' + (q.status || 'pendiente') + '</span></td><td>' + (q.user_name || '-') + '</td><td style="font-size:.8rem">' + (q.created_at || '') + '</td><td class="text-right"><button class="btn btn-sm btn-outline" onclick="viewQuoteDetail(' + q.id + ')">Ver</button> <button class="btn btn-sm btn-primary" onclick="editQuote(' + q.id + ')">Editar</button> <button class="btn btn-sm btn-outline" onclick="setQuoteStatus(' + q.id + ')">Estado</button> <button class="btn btn-sm btn-outline" onclick="exportQuotePdf(' + q.id + ')">PDF</button> <button class="btn btn-sm btn-danger" onclick="deleteQuote(' + q.id + ')">Eliminar</button></td></tr>';
+    html += '<tr style="font-size:.92rem"><td>' + q.id + '</td><td><strong>' + escHtml(q.client_name || '-') + '</strong></td><td style="max-width:320px;white-space:normal;word-break:break-word;font-size:.88rem;line-height:1.4" title="' + escHtml(q.descriptions || '-') + '">' + escHtml((q.descriptions || '-').substring(0, 120)) + '</td><td class="text-right"><strong>$' + Number(q.total).toFixed(2) + '</strong></td><td><span class="badge ' + (q.status === 'aprobada' ? 'badge-success' : q.status === 'rechazada' ? 'badge-danger' : 'badge-warning') + '">' + (q.status || 'pendiente') + '</span></td><td>' + (q.user_name || '-') + '</td><td style="font-size:.85rem">' + (q.created_at || '') + '</td><td class="text-right"><button class="btn btn-sm btn-outline" onclick="viewQuoteDetail(' + q.id + ')">Ver</button> <button class="btn btn-sm btn-primary" onclick="editQuote(' + q.id + ')">Editar</button> <button class="btn btn-sm btn-outline" onclick="setQuoteStatus(' + q.id + ')">Estado</button> <button class="btn btn-sm btn-outline" onclick="exportQuotePdf(' + q.id + ')">PDF</button> <button class="btn btn-sm btn-danger" onclick="deleteQuote(' + q.id + ')">Eliminar</button></td></tr>';
   }
   document.getElementById('quotesTable').innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:1rem">Sin resultados</td></tr>';
 }
