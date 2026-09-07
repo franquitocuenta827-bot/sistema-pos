@@ -849,53 +849,57 @@ async function viewClientPayments(clientId) {
 // ==================== POS (Venta Rápida) ====================
 var saleCart = [];
 
-function viewPOS() {
-  var today = new Date().toISOString().split('T')[0];
-  return '<div style="max-width:900px;margin:0 auto">' +
-    '<div class="card" style="margin-bottom:1rem">' +
-    '<h3 style="margin-bottom:1rem;color:var(--text)">Buscar Producto</h3>' +
-    '<div style="display:flex;gap:.5rem">' +
-    '<input class="search-input" id="vs_search" placeholder="Buscar por codigo, descripcion 1 o descripcion 2..." style="flex:1" oninput="searchSaleProduct()">' +
-    '<button class="btn btn-primary" onclick="searchSaleProduct()">Buscar</button>' +
-    '</div>' +
-    '<div id="vs_results" style="margin-top:.75rem;max-height:200px;overflow-y:auto"></div>' +
-    '</div>' +
-    '<div class="card" style="margin-bottom:1rem">' +
-    '<h3 style="margin-bottom:1rem;color:var(--text)">Productos en Venta</h3>' +
-    '<table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead><tbody id="vs_cart_items"></tbody></table>' +
-    '<div style="text-align:right;font-weight:700;font-size:1.2rem;margin-top:.5rem;color:var(--primary-light)">Total: $<span id="vs_cart_total">0.00</span></div>' +
-    '</div>' +
-    '<div class="card">' +
-    '<h3 style="margin-bottom:1rem;color:var(--text)">Completar Venta</h3>' +
-    '<div class="form-grid">' +
-    '<div class="form-group"><label>Fecha</label><input id="vs_date" type="date" class="w-full" value="' + today + '"></div>' +
-    '<div class="form-group"><label>Forma Pago</label><select id="vs_payment" class="w-full"><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta Corriente</option><option value="otro">Otro</option></select></div>' +
-    '<div class="form-group"><label>Cliente *</label><select id="vs_client" class="w-full"><option value="">Seleccionar cliente (obligatorio)</option></select></div>' +
-    '</div>' +
-    '<button class="btn btn-success btn-lg w-full" onclick="quickSale()" id="btnQuickSale" style="margin-top:1rem">Completar Venta (' + saleCart.length + ' productos)</button>' +
-    '</div></div>';
-}
+ function viewPOS() {
+   var today = new Date().toISOString().split('T')[0];
+   return '<div style="max-width:900px;margin:0 auto">' +
+     '<div class="card" style="margin-bottom:1rem">' +
+     '<h3 style="margin-bottom:1rem;color:var(--text)">Buscar Producto</h3>' +
+     '<div style="display:flex;gap:.5rem;margin-bottom:.75rem;align-items:flex-end">' +
+     '<div class="form-group" style="margin-bottom:0"><label>Descuento %</label><input id="vsDiscount" type="number" step="0.01" value="0" min="0" placeholder="0" oninput="searchSaleProduct()" style="width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
+     '<input class="search-input" id="vs_search" placeholder="Buscar por codigo, descripcion 1 o descripcion 2..." style="flex:1" oninput="searchSaleProduct()">' +
+     '<button class="btn btn-primary" onclick="searchSaleProduct()">Buscar</button>' +
+     '</div>' +
+     '<div id="vs_results" style="margin-top:.75rem;max-height:200px;overflow-y:auto"></div>' +
+     '</div>' +
+     '<div class="card" style="margin-bottom:1rem">' +
+     '<h3 style="margin-bottom:1rem;color:var(--text)">Productos en Venta</h3>' +
+     '<table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Precio con Descuento</th><th>Subtotal</th><th></th></tr></thead><tbody id="vs_cart_items"></tbody></table>' +
+     '<div style="text-align:right;font-weight:700;font-size:1.2rem;margin-top:.5rem;color:var(--primary-light)">Total: $<span id="vs_cart_total">0.00</span></div>' +
+     '</div>' +
+     '<div class="card">' +
+     '<h3 style="margin-bottom:1rem;color:var(--text)">Completar Venta</h3>' +
+     '<div class="form-grid">' +
+     '<div class="form-group"><label>Fecha</label><input id="vs_date" type="date" class="w-full" value="' + today + '"></div>' +
+     '<div class="form-group"><label>Forma Pago</label><select id="vs_payment" class="w-full"><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="cuenta_corriente">Cuenta Corriente</option><option value="otro">Otro</option></select></div>' +
+     '<div class="form-group"><label>Cliente *</label><select id="vs_client" class="w-full"><option value="">Seleccionar cliente (obligatorio)</option></select></div>' +
+     '</div>' +
+     '<button class="btn btn-success btn-lg w-full" onclick="quickSale()" id="btnQuickSale" style="margin-top:1rem">Completar Venta (' + saleCart.length + ' productos)</button>' +
+     '</div></div>';
+ }
 
-function renderSaleCart() {
-  var tbody = document.getElementById('vs_cart_items');
-  if (!tbody) return;
-  var total = 0;
-  var html = '';
-  for (var i = 0; i < saleCart.length; i++) {
-    var item = saleCart[i];
-    var sub = item.qty * item.price;
-    total += sub;
-     html += '<tr><td><strong>' + escHtml(item.name) + '</strong>' +
-       ((item.description1 || item.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(item.description1 || '') + (item.description1 && item.description2 ? ' | ' : '') + escHtml(item.description2 || '') + '</small>' : '') +
-       '</td><td><input type="number" step="0.01" min="0.01" value="' + item.qty + '" onchange="saleSetQty(' + i + ', this.value)" style="width:80px;text-align:center;padding:4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px" class="qty-input"></td><td>$' + Number(item.price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td>' +
-       '<td><button class="btn btn-sm btn-danger" onclick="saleCart.splice(' + i + ',1);renderSaleCart();updateQuickBtn()">&times;</button></td></tr>';
-  }
-  if (!html) html = '<tr><td colspan="5" class="empty-state">Sin productos. Busque y agregue productos arriba.</td></tr>';
-  tbody.innerHTML = html;
-  var totalEl = document.getElementById('vs_cart_total');
-  if (totalEl) totalEl.textContent = total.toFixed(2);
-  updateQuickBtn();
-}
+ function renderSaleCart() {
+   var tbody = document.getElementById('vs_cart_items');
+   if (!tbody) return;
+   var total = 0;
+   var discountPct = parseFloat(document.getElementById('vsDiscount')?.value) || 0;
+   var html = '';
+   for (var i = 0; i < saleCart.length; i++) {
+     var item = saleCart[i];
+     var sub = item.qty * item.price;
+     var discPrice = item.price * (1 - discountPct / 100);
+     var discSub = item.qty * discPrice;
+     total += sub;
+      html += '<tr><td><strong>' + escHtml(item.name) + '</strong>' +
+        ((item.description1 || item.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(item.description1 || '') + (item.description1 && item.description2 ? ' | ' : '') + escHtml(item.description2 || '') + '</small>' : '') +
+        '</td><td><input type="number" step="0.01" min="0.01" value="' + item.qty + '" onchange="saleSetQty(' + i + ', this.value)" style="width:80px;text-align:center;padding:4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px" class="qty-input"></td><td>$' + Number(item.price).toFixed(2) + '</td><td>$' + Number(discPrice).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td>' +
+        '<td><button class="btn btn-sm btn-danger" onclick="saleCart.splice(' + i + ',1);renderSaleCart();updateQuickBtn()">&times;</button></td></tr>';
+   }
+   if (!html) html = '<tr><td colspan="6" class="empty-state">Sin productos. Busque y agregue productos arriba.</td></tr>';
+   tbody.innerHTML = html;
+   var totalEl = document.getElementById('vs_cart_total');
+   if (totalEl) totalEl.textContent = total.toFixed(2);
+   updateQuickBtn();
+ }
 
  function updateQuickBtn() {
    var btn = document.getElementById('btnQuickSale');
@@ -929,29 +933,33 @@ function renderSaleCart() {
 
 var lastSearchResults = [];
 
-async function searchSaleProduct() {
-  var q = document.getElementById('vs_search').value.trim();
-  if (!q) { document.getElementById('vs_results').innerHTML = ''; return; }
-  var products = await api('GET', '/products?search=' + encodeURIComponent(q)) || [];
-  lastSearchResults = products;
-  var html = '';
-  for (var i = 0; i < products.length; i++) {
-    var p = products[i];
-    var sinStock = p.stock <= 0;
-    html += '<div class="prod-card" style="cursor:pointer;margin-bottom:4px" onclick="addSaleProductById(' + p.id + ')">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<div><strong>' + escHtml(p.name) + '</strong>' +
-      (sinStock ? ' <span class="badge badge-warning">Stock: ' + p.stock + '</span>' : '') +
-      (p.barcode ? ' <small style="color:var(--text-muted)">Cod: ' + escHtml(p.barcode) + '</small>' : '') +
-      (p.description1 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description1) + '</small>' : '') +
-      (p.description2 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description2) + '</small>' : '') +
-      '</div>' +
-      '<div style="text-align:right"><div style="font-weight:700;color:var(--primary-light)">$' + Number(p.price).toFixed(2) + '</div><small style="color:var(--text-muted)">Stock: ' + p.stock + '</small></div>' +
-      '</div></div>';
-  }
-  if (!html) html = '<div class="empty-state" style="padding:1rem">Sin resultados</div>';
-  document.getElementById('vs_results').innerHTML = html;
-}
+ async function searchSaleProduct() {
+   var q = document.getElementById('vs_search').value.trim();
+   if (!q) { document.getElementById('vs_results').innerHTML = ''; return; }
+   var products = await api('GET', '/products?search=' + encodeURIComponent(q)) || [];
+   lastSearchResults = products;
+   var discountPct = parseFloat(document.getElementById('vsDiscount')?.value) || 0;
+   var html = '';
+   for (var i = 0; i < products.length; i++) {
+     var p = products[i];
+     var sinStock = p.stock <= 0;
+     var discPrice = p.price * (1 - discountPct / 100);
+     html += '<div class="prod-card" style="cursor:pointer;margin-bottom:4px" onclick="addSaleProductById(' + p.id + ')">' +
+       '<div style="display:flex;justify-content:space-between;align-items:center">' +
+       '<div><strong>' + escHtml(p.name) + '</strong>' +
+       (sinStock ? ' <span class="badge badge-warning">Stock: ' + p.stock + '</span>' : '') +
+       (p.barcode ? ' <small style="color:var(--text-muted)">Cod: ' + escHtml(p.barcode) + '</small>' : '') +
+       (p.description1 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description1) + '</small>' : '') +
+       (p.description2 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description2) + '</small>' : '') +
+       '</div>' +
+       '<div style="text-align:right"><div style="font-weight:700;color:var(--primary-light)">$' + Number(discPrice).toFixed(2) + '</div>' +
+       (discountPct ? '<small style="color:var(--text-muted)">$' + Number(p.price).toFixed(2) + ' orig.</small>' : '') +
+       '<div><small style="color:var(--text-muted)">Stock: ' + p.stock + '</small></div></div>' +
+       '</div></div>';
+   }
+   if (!html) html = '<div class="empty-state" style="padding:1rem">Sin resultados</div>';
+   document.getElementById('vs_results').innerHTML = html;
+ }
 
 function addSaleProductById(id) {
   var p = lastSearchResults.find(function(x) { return x.id === id; });
@@ -1027,7 +1035,7 @@ async function quickSale() {
      openModal('Confirmar Venta',
        '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
        '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
-       '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="0" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)" oninput="calcDescuento()"></div>' +
+        '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="' + (parseFloat(document.getElementById('vsDiscount')?.value) || 0) + '" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)" oninput="calcDescuento()"></div>' +
        '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Precio con Descuento</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
        '<tr style="font-weight:700"><td colspan="4" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem" id="vTotalDisplay">$' + total.toFixed(2) + '</td></tr>' +
        '</tbody></table>',
