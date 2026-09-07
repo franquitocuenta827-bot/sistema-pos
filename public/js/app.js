@@ -1274,8 +1274,11 @@ async function loadSales() {
      '<p><strong>Cliente:</strong> ' + (sale.client_name || 'General') + '<br><strong>Usuario:</strong> ' + (sale.user_name || '-') + '<br><strong>Metodo de pago:</strong> ' + fmtPay(sale.payment_method) + '<br><strong>Fecha:</strong> ' + sale.created_at + '</p>' +
      '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
     '<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
-    '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
-    '<div style="display:flex;justify-content:space-between;font-weight:700"><span>Subtotal: $' + (Number(sale.total) + Number(sale.discount || 0)).toFixed(2) + '</span><span>Descuento: $' + Number(sale.discount || 0).toFixed(2) + '</span><span>Total: $' + Number(sale.total).toFixed(2) + '</span></div>' +
+     '<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
+     '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
+     '<div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:.5rem"><span>Valor Total Real:</span><span>$' + (Number(sale.total) + Number(sale.discount || 0)).toFixed(2) + '</span></div>' +
+     '<div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:.5rem"><span>Descuento:</span><span>-$' + Number(sale.discount || 0).toFixed(2) + '</span></div>' +
+     '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:1.2rem;color:var(--primary-light)"><span>Valor con Descuento / TOTAL:</span><span>$' + Number(sale.total).toFixed(2) + '</span></div>' +
     '<div style="text-align:center;margin-top:1rem"><button class="btn btn-outline" onclick="printTicket(' + sale.id + ')">Imprimir Ticket</button></div>',
     null,
     '<button class="btn btn-outline" onclick="closeModal()">Cerrar</button>');
@@ -1324,10 +1327,10 @@ async function printTicket(id) {
     ticketHeader() +
     '<p class="info"><strong>Ticket #' + sale.id + '</strong><br>Fecha: ' + (sale.created_at || '') + '<br>Vendedor: ' + (sale.user_name || '-') + '<br>Cliente: ' + (sale.client_name || 'General') + '<br>Pago: ' + fmtPay(sale.payment_method) + '</p>' +
     '<div class="line"></div><table><tr><th>Producto</th><th class="r">Cant</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>' + itemsHtml + '</table>' +
-    '<div class="line"></div>' +
-    '<p style="display:flex;justify-content:space-between"><span>Subtotal:</span><span>$' + (Number(sale.total) + Number(sale.discount || 0)).toFixed(2) + '</span></p>' +
-    (sale.discount > 0 ? '<p style="display:flex;justify-content:space-between"><span>Descuento:</span><span>-$' + Number(sale.discount).toFixed(2) + '</span></p>' : '') +
-    '<p class="total" style="display:flex;justify-content:space-between"><span>TOTAL:</span><span>$' + Number(sale.total).toFixed(2) + '</span></p>' +
+     '<div class="line"></div>' +
+     '<p style="display:flex;justify-content:space-between"><span>Valor Total Real:</span><span>$' + (Number(sale.total) + Number(sale.discount || 0)).toFixed(2) + '</span></p>' +
+     (sale.discount > 0 ? '<p style="display:flex;justify-content:space-between"><span>Descuento:</span><span>-$' + Number(sale.discount).toFixed(2) + '</span></p>' : '') +
+     '<p class="total" style="display:flex;justify-content:space-between"><span>Valor con Descuento / TOTAL:</span><span>$' + Number(sale.total).toFixed(2) + '</span></p>' +
     '<div class="footer">Gracias por su compra</div></body></html>');
 }
 
@@ -1402,11 +1405,12 @@ async function printInvoiceTicket(id) {
     '</div>' +
     '<div class="twrap">' +
     '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
-    '<div class="totals">' +
-    '<div class="trow"><span>Subtotal:</span><span>$' + Number(inv.subtotal || inv.total).toFixed(2) + '</span></div>' +
-    (inv.iva_total > 0 ? '<div class="trow"><span>IVA:</span><span>$' + Number(inv.iva_total).toFixed(2) + '</span></div>' : '') +
-    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(inv.total).toFixed(2) + '</span></div>' +
-    '</div>' +
+     '<div class="totals">' +
+     '<div class="trow"><span>Valor Total Real:</span><span>$' + Number(inv.subtotal || inv.total).toFixed(2) + '</span></div>' +
+     (inv.discount > 0 ? '<div class="trow"><span>Descuento:</span><span>-$' + Number(inv.discount).toFixed(2) + '</span></div>' : '') +
+     (inv.iva_total > 0 ? '<div class="trow"><span>IVA:</span><span>$' + Number(inv.iva_total).toFixed(2) + '</span></div>' : '') +
+     '<div class="trow grand"><span>Valor con Descuento / TOTAL:</span><span>$' + Number(inv.total).toFixed(2) + '</span></div>' +
+     '</div>' +
     '<div class="foot">Documento emitido por el Sistema POS de Caños Embalse' +
     (legal ? '' : '<div class="discl">DOCUMENTO NO VALIDO COMO FACTURA</div>') +
     '</div>' +

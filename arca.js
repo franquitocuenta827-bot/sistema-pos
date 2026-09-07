@@ -256,9 +256,11 @@ async function emitirFactura(saleId, paymentMethod) {
     invoiceNumber = generateInternalInvoiceNumber();
   }
 
-  const subTotal = sale.total;
-  db.run("INSERT INTO invoices (sale_id, invoice_type, invoice_letter, invoice_number, cae, cae_vto, result, client_id, client_name, client_cuit, client_iva, total, iva_total, subtotal, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [saleId, needsLegalInvoice && cae ? 'legal' : 'interna', invoiceLetter, invoiceNumber, cae, caeVto, result, sale.client_id || null, sale.client_name || 'General', sale.client_cuit || '', sale.client_iva || '', sale.total, 0, subTotal, paymentMethod]);
+   const subTotal = sale.total;
+   const discountAmt = sale.discount || 0;
+   const totalReal = sale.total + discountAmt;
+   db.run("INSERT INTO invoices (sale_id, invoice_type, invoice_letter, invoice_number, cae, cae_vto, result, client_id, client_name, client_cuit, client_iva, total, iva_total, subtotal, discount, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+     [saleId, needsLegalInvoice && cae ? 'legal' : 'interna', invoiceLetter, invoiceNumber, cae, caeVto, result, sale.client_id || null, sale.client_name || 'General', sale.client_cuit || '', sale.client_iva || '', sale.total, 0, subTotal, discountAmt, paymentMethod]);
 
   const invoiceId = lastId();
   for (const item of items) {
