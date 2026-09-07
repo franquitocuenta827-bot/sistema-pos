@@ -911,11 +911,11 @@ var saleCart = [];
    if (isNaN(discount) || discount < 0) discount = 0;
    var n = saleCart.length;
    if (!n) return;
-   var perItem = (it.price * discount / 100) / n;
    var totalFinal = 0;
    for (var i = 0; i < n; i++) {
      var it = saleCart[i];
      var sub = it.qty * it.price;
+     var perItem = it.price * discount / 100 / n;
      var pd = it.price - perItem;
      if (pd < 0) pd = 0;
      var subFinal = pd * it.qty;
