@@ -897,10 +897,35 @@ function renderSaleCart() {
   updateQuickBtn();
 }
 
-function updateQuickBtn() {
-  var btn = document.getElementById('btnQuickSale');
-  if (btn) btn.textContent = 'Completar Venta (' + saleCart.length + ' productos)';
-}
+ function updateQuickBtn() {
+   var btn = document.getElementById('btnQuickSale');
+   if (btn) btn.textContent = 'Completar Venta (' + saleCart.length + ' productos)';
+ }
+
+ function calcDescuento() {
+   var discount = parseFloat((document.getElementById('vDiscount') && document.getElementById('vDiscount').value) || 0);
+   if (isNaN(discount) || discount < 0) discount = 0;
+   var n = saleCart.length;
+   if (!n) return;
+   var perItem = discount / n;
+   var totalFinal = 0;
+   for (var i = 0; i < n; i++) {
+     var it = saleCart[i];
+     var sub = it.qty * it.price;
+     var pd = it.price - perItem;
+     if (pd < 0) pd = 0;
+     var subFinal = pd * it.qty;
+     var elP = document.getElementById('vP' + i);
+     var elPD = document.getElementById('vPD' + i);
+     var elS = document.getElementById('vS' + i);
+     if (elP) elP.textContent = '$' + Number(it.price).toFixed(2);
+     if (elPD) elPD.textContent = '$' + Number(pd).toFixed(2);
+     if (elS) elS.textContent = '$' + Number(subFinal).toFixed(2);
+     totalFinal += subFinal;
+   }
+   var elT = document.getElementById('vTotalDisplay');
+   if (elT) elT.textContent = '$' + Number(totalFinal).toFixed(2);
+ }
 
 var lastSearchResults = [];
 
@@ -988,54 +1013,54 @@ async function quickSale() {
     var p = await api('GET', '/products/' + item.product_id);
     if (p && item.qty > p.stock && p.stock >= 0) stockWarnings.push(item.name + ' (disp: ' + p.stock + ')');
   }
-   // Mostrar confirmacion con detalle y descuento
-   var total = 0;
-   var itemsHtml = '';
-   for (var i = 0; i < saleCart.length; i++) {
-     var it = saleCart[i];
-     var sub = it.qty * it.price;
-     total += sub;
-     itemsHtml += '<tr><td>' + escHtml(it.name) + ((it.description1 || it.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(it.description1 || '') + (it.description1 && it.description2 ? ' | ' : '') + escHtml(it.description2 || '') + '</small>' : '') + '</td><td class="text-center">' + it.qty + '</td><td class="text-right">$' + Number(it.price).toFixed(2) + '</td><td class="text-right">$' + sub.toFixed(2) + '</td></tr>';
+    // Mostrar confirmacion con detalle y descuento
+    var total = 0;
+    var itemsHtml = '';
+    for (var i = 0; i < saleCart.length; i++) {
+      var it = saleCart[i];
+      var sub = it.qty * it.price;
+      total += sub;
+      itemsHtml += '<tr id="vRow' + i + '"><td>' + escHtml(it.name) + ((it.description1 || it.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(it.description1 || '') + (it.description1 && it.description2 ? ' | ' : '') + escHtml(it.description2 || '') + '</small>' : '') + '</td><td class="text-center">' + it.qty + '</td><td class="text-right" id="vP' + i + '">$' + Number(it.price).toFixed(2) + '</td><td class="text-right" id="vPD' + i + '">$' + Number(it.price).toFixed(2) + '</td><td class="text-right" id="vS' + i + '">$' + sub.toFixed(2) + '</td></tr>';
+    }
+    var paymentLabels = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', otro: 'Otro' };
+     var pagoLabel = paymentLabels[payment] || payment;
+     openModal('Confirmar Venta',
+       '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
+       '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
+       '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="0" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)" oninput="calcDescuento()"></div>' +
+       '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Precio con Descuento</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
+       '<tr style="font-weight:700"><td colspan="4" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem" id="vTotalDisplay">$' + total.toFixed(2) + '</td></tr>' +
+       '</tbody></table>',
+       async function () {
+         var discount = parseFloat(document.getElementById('vDiscount').value) || 0;
+         if (discount < 0) discount = 0;
+         var btn = document.getElementById('btnQuickSale');
+         btn.disabled = true;
+         btn.textContent = 'Procesando...';
+         var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
+         var res = await api('POST', '/sales', { items: items, discount: discount, payment_method: payment, client_id: clientId });
+         btn.disabled = false;
+         if (res && res.success) {
+           closeModal();
+           var invMsg = 'Venta registrada exitosamente';
+           if (res.invoice) {
+             invMsg += ' | Factura: ' + res.invoice.invoiceNumber + ' (' + (res.invoice.type === 'legal' ? 'Legal ' + res.invoice.invoiceLetter : 'Interna') + ')';
+           }
+           showAlert(invMsg);
+           saleCart = [];
+           renderSaleCart();
+           document.getElementById('vs_search').value = '';
+           document.getElementById('vs_results').innerHTML = '';
+           btn.textContent = 'Completar Venta (0 productos)';
+         } else {
+           btn.textContent = 'Completar Venta (' + saleCart.length + ' productos)';
+           showAlert(res && res.error ? res.error : 'Error al registrar venta', 'danger');
+           closeModal();
+         }
+       },
+       '<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="modalSave()">Confirmar Venta</button>');
+     setTimeout(calcDescuento, 50);
    }
-   var paymentLabels = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', otro: 'Otro' };
-   var pagoLabel = paymentLabels[payment] || payment;
-   openModal('Confirmar Venta',
-     '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
-     '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
-     '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="0" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
-     '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
-     '<tr style="font-weight:700"><td colspan="3" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem" id="vTotalDisplay">$' + total.toFixed(2) + '</td></tr>' +
-     '</tbody></table>',
-     async function () {
-       var discount = parseFloat(document.getElementById('vDiscount').value) || 0;
-       if (discount < 0) discount = 0;
-       var finalTotal = total - discount;
-       var btn = document.getElementById('btnQuickSale');
-       btn.disabled = true;
-       btn.textContent = 'Procesando...';
-       var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
-       var res = await api('POST', '/sales', { items: items, discount: discount, payment_method: payment, client_id: clientId });
-      btn.disabled = false;
-      if (res && res.success) {
-        closeModal();
-        var invMsg = 'Venta registrada exitosamente';
-        if (res.invoice) {
-          invMsg += ' | Factura: ' + res.invoice.invoiceNumber + ' (' + (res.invoice.type === 'legal' ? 'Legal ' + res.invoice.invoiceLetter : 'Interna') + ')';
-        }
-        showAlert(invMsg);
-        saleCart = [];
-        renderSaleCart();
-        document.getElementById('vs_search').value = '';
-        document.getElementById('vs_results').innerHTML = '';
-        btn.textContent = 'Completar Venta (0 productos)';
-      } else {
-        btn.textContent = 'Completar Venta (' + saleCart.length + ' productos)';
-        showAlert(res && res.error ? res.error : 'Error al registrar venta', 'danger');
-        closeModal();
-      }
-    },
-    '<button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-success" onclick="modalSave()">Confirmar Venta</button>');
-}
 
 // ==================== PURCHASES ====================
 var purCart = [];
