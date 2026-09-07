@@ -855,8 +855,8 @@ var saleCart = [];
      '<div class="card" style="margin-bottom:1rem">' +
      '<h3 style="margin-bottom:1rem;color:var(--text)">Buscar Producto</h3>' +
      '<div style="display:flex;gap:.5rem;margin-bottom:.75rem;align-items:flex-end">' +
-     '<div class="form-group" style="margin-bottom:0"><label>Descuento %</label><input id="vsDiscount" type="number" step="0.01" value="0" min="0" placeholder="0" oninput="searchSaleProduct()" style="width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
-     '<input class="search-input" id="vs_search" placeholder="Buscar por codigo, descripcion 1 o descripcion 2..." style="flex:1" oninput="searchSaleProduct()">' +
+     '<div class="form-group" style="margin-bottom:0"><label>Descuento %</label><input id="vsDiscount" type="number" step="0.01" value="0" min="0" placeholder="0" oninput="renderSearchResults()" style="width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
+     '<input class="search-input" id="vs_search" placeholder="Buscar por codigo, descripcion 1 o descripcion 2..." style="flex:1" oninput="renderSearchResults()">' +
      '<button class="btn btn-primary" onclick="searchSaleProduct()">Buscar</button>' +
      '</div>' +
      '<div id="vs_results" style="margin-top:.75rem;max-height:200px;overflow-y:auto"></div>' +
@@ -931,35 +931,40 @@ var saleCart = [];
    if (elT) elT.textContent = '$' + Number(totalFinal).toFixed(2);
  }
 
-var lastSearchResults = [];
+ var lastSearchResults = [];
 
- async function searchSaleProduct() {
-   var q = document.getElementById('vs_search').value.trim();
-   if (!q) { document.getElementById('vs_results').innerHTML = ''; return; }
-   var products = await api('GET', '/products?search=' + encodeURIComponent(q)) || [];
-   lastSearchResults = products;
-   var discountPct = parseFloat(document.getElementById('vsDiscount')?.value) || 0;
-   var html = '';
-   for (var i = 0; i < products.length; i++) {
-     var p = products[i];
-     var sinStock = p.stock <= 0;
-     var discPrice = p.price * (1 - discountPct / 100);
-     html += '<div class="prod-card" style="cursor:pointer;margin-bottom:4px" onclick="addSaleProductById(' + p.id + ')">' +
-       '<div style="display:flex;justify-content:space-between;align-items:center">' +
-       '<div><strong>' + escHtml(p.name) + '</strong>' +
-       (sinStock ? ' <span class="badge badge-warning">Stock: ' + p.stock + '</span>' : '') +
-       (p.barcode ? ' <small style="color:var(--text-muted)">Cod: ' + escHtml(p.barcode) + '</small>' : '') +
-       (p.description1 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description1) + '</small>' : '') +
-       (p.description2 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description2) + '</small>' : '') +
-       '</div>' +
-       '<div style="text-align:right"><div style="font-weight:700;color:var(--primary-light)">$' + Number(discPrice).toFixed(2) + '</div>' +
-       (discountPct ? '<small style="color:var(--text-muted)">$' + Number(p.price).toFixed(2) + ' orig.</small>' : '') +
-       '<div><small style="color:var(--text-muted)">Stock: ' + p.stock + '</small></div></div>' +
-       '</div></div>';
-   }
-   if (!html) html = '<div class="empty-state" style="padding:1rem">Sin resultados</div>';
-   document.getElementById('vs_results').innerHTML = html;
- }
+  function renderSearchResults() {
+    var products = lastSearchResults;
+    var discountPct = parseFloat(document.getElementById('vsDiscount')?.value) || 0;
+    var html = '';
+    for (var i = 0; i < products.length; i++) {
+      var p = products[i];
+      var sinStock = p.stock <= 0;
+      var discPrice = p.price * (1 - discountPct / 100);
+      html += '<div class="prod-card" style="cursor:pointer;margin-bottom:4px" onclick="addSaleProductById(' + p.id + ')">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<div><strong>' + escHtml(p.name) + '</strong>' +
+        (sinStock ? ' <span class="badge badge-warning">Stock: ' + p.stock + '</span>' : '') +
+        (p.barcode ? ' <small style="color:var(--text-muted)">Cod: ' + escHtml(p.barcode) + '</small>' : '') +
+        (p.description1 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description1) + '</small>' : '') +
+        (p.description2 ? ' <small style="color:var(--text-muted)">| ' + escHtml(p.description2) + '</small>' : '') +
+        '</div>' +
+        '<div style="text-align:right"><div style="font-weight:700;color:var(--primary-light)">$' + Number(discPrice).toFixed(2) + '</div>' +
+        (discountPct ? '<small style="color:var(--text-muted)">$' + Number(p.price).toFixed(2) + ' orig.</small>' : '') +
+        '<div><small style="color:var(--text-muted)">Stock: ' + p.stock + '</small></div></div>' +
+        '</div></div>';
+    }
+    if (!html) html = '<div class="empty-state" style="padding:1rem">Sin resultados</div>';
+    document.getElementById('vs_results').innerHTML = html;
+  }
+
+  async function searchSaleProduct() {
+    var q = document.getElementById('vs_search').value.trim();
+    if (!q) { document.getElementById('vs_results').innerHTML = ''; return; }
+    var products = await api('GET', '/products?search=' + encodeURIComponent(q)) || [];
+    lastSearchResults = products;
+    renderSearchResults();
+  }
 
 function addSaleProductById(id) {
   var p = lastSearchResults.find(function(x) { return x.id === id; });
