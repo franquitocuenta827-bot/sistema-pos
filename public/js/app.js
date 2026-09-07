@@ -911,7 +911,7 @@ var saleCart = [];
    if (isNaN(discount) || discount < 0) discount = 0;
    var n = saleCart.length;
    if (!n) return;
-   var perItem = discount / n;
+   var perItem = (it.price * discount / 100) / n;
    var totalFinal = 0;
    for (var i = 0; i < n; i++) {
      var it = saleCart[i];
@@ -1040,18 +1040,19 @@ async function quickSale() {
      openModal('Confirmar Venta',
        '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
        '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
-        '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="' + (parseFloat(document.getElementById('vsDiscount')?.value) || 0) + '" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)" oninput="calcDescuento()"></div>' +
+        '<div class="form-group"><label>Descuento (%)</label><input id="vDiscount" type="number" step="0.01" value="' + (parseFloat(document.getElementById('vsDiscount')?.value) || 0) + '" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)" oninput="calcDescuento()"></div>' +
        '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Precio con Descuento</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
        '<tr style="font-weight:700"><td colspan="4" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem" id="vTotalDisplay">$' + total.toFixed(2) + '</td></tr>' +
        '</tbody></table>',
-       async function () {
-         var discount = parseFloat(document.getElementById('vDiscount').value) || 0;
-         if (discount < 0) discount = 0;
-         var btn = document.getElementById('btnQuickSale');
-         btn.disabled = true;
-         btn.textContent = 'Procesando...';
-         var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
-         var res = await api('POST', '/sales', { items: items, discount: discount, payment_method: payment, client_id: clientId });
+        async function () {
+          var discountPct = parseFloat(document.getElementById('vDiscount').value) || 0;
+          if (discountPct < 0) discountPct = 0;
+          var discountAmount = total * (discountPct / 100);
+          var btn = document.getElementById('btnQuickSale');
+          btn.disabled = true;
+          btn.textContent = 'Procesando...';
+          var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
+          var res = await api('POST', '/sales', { items: items, discount: discountAmount, payment_method: payment, client_id: clientId });
          btn.disabled = false;
          if (res && res.success) {
            closeModal();
