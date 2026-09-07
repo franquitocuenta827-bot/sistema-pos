@@ -146,6 +146,7 @@ async function initDatabase() {
     client_id INTEGER,
     user_id INTEGER,
     total REAL NOT NULL DEFAULT 0,
+    discount REAL NOT NULL DEFAULT 0,
     status TEXT DEFAULT 'pendiente',
     notes TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -254,6 +255,7 @@ async function initDatabase() {
   try { db.run("ALTER TABLE invoices ADD COLUMN payment_method TEXT DEFAULT ''"); } catch (e) {}
   try { db.run("ALTER TABLE invoices ADD COLUMN subtotal REAL NOT NULL DEFAULT 0"); } catch (e) {}
   try { db.run("ALTER TABLE invoices ADD COLUMN discount REAL NOT NULL DEFAULT 0"); } catch (e) {}
+  try { db.run("ALTER TABLE quotes ADD COLUMN discount REAL NOT NULL DEFAULT 0"); } catch (e) {}
 
   db.run(`CREATE TABLE IF NOT EXISTS backups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

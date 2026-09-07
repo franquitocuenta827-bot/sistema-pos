@@ -1473,12 +1473,14 @@ function showQuoteForm() {
     '<button class="btn btn-primary btn-sm" onclick="addQuoteItem()">+</button></div>' +
     '<table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead><tbody id="qtItems"></tbody></table>' +
     '<div style="text-align:right;font-weight:700;margin-top:.5rem">Total: $<span id="qtTotal">0.00</span></div>' +
+    '<div class="form-group mt-1"><label>Descuento (%)</label><input id="qtDiscount" type="number" step="0.01" value="0" min="0" placeholder="0" style="width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
     '<div class="form-group mt-1"><label>Notas</label><textarea id="qtNotes" rows="2" class="w-full"></textarea></div>',
     async function () {
       if (!quoteCart.length) return showAlert('Agregue al menos un producto', 'danger');
       var client_id = document.getElementById('qtClient').value || null;
       var notes = document.getElementById('qtNotes').value.trim();
-      var res = await api('POST', '/quotes', { client_id: client_id, items: quoteCart, notes: notes });
+      var discount = parseFloat(document.getElementById('qtDiscount')?.value) || 0;
+      var res = await api('POST', '/quotes', { client_id: client_id, items: quoteCart, notes: notes, discount: discount });
       if (res.success) { closeModal(); loadQuotes(); showAlert('Cotizacion creada'); }
       else showAlert(res && res.error ? res.error : 'Error', 'danger');
     });
@@ -1602,7 +1604,7 @@ async function viewQuoteDetail(id) {
   var html = '<p><strong>Cliente:</strong> ' + escHtml(q.client_name || '-') + '<br><strong>Estado:</strong> ' + (q.status || 'pendiente') + '<br><strong>Notas:</strong> ' + escHtml(q.notes || '-') + '<br><strong>Fecha:</strong> ' + q.created_at + '</p>' +
     '<hr><table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>' +
     (q.items || []).map(function (i) { return '<tr><td>' + i.product_name + (i.description ? '<br><small style="color:var(--text-muted)">' + escHtml(i.description) + '</small>' : '') + '</td><td>' + i.quantity + '</td><td>$' + Number(i.price).toFixed(2) + '</td><td>$' + Number(i.subtotal).toFixed(2) + '</td></tr>'; }).join('') +
-    '</tbody></table><hr><p style="text-align:right;font-weight:700;font-size:1.1rem">Total: $' + Number(q.total).toFixed(2) + '</p>';
+    '</tbody></table><hr><p style="text-align:right;font-weight:700;font-size:1.1rem">Valor Total Real: $' + Number(q.total + (q.discount || 0)).toFixed(2) + '</p>' + (Number(q.discount || 0) > 0 ? '<p style="text-align:right;font-weight:700">Descuento: $' + Number(q.discount || 0).toFixed(2) + '</p>' : '') + '<p style="text-align:right;font-weight:700;font-size:1.1rem;color:var(--primary-light)">Valor con Descuento: $' + Number(q.total).toFixed(2) + '</p>';
   openModal('Cotizacion #' + q.id, html, null, '<button class="btn btn-outline" onclick="closeModal()">Cerrar</button>');
 }
 
@@ -1657,15 +1659,16 @@ async function editQuote(id) {
     '<button class="btn btn-primary btn-sm" onclick="addQuoteItem()">+</button></div>' +
     '<table><thead><tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead><tbody id="qtItems"></tbody></table>' +
     '<div style="text-align:right;font-weight:700;margin-top:.5rem">Total: $<span id="qtTotal">0.00</span></div>' +
+    '<div class="form-group mt-1"><label>Descuento (%)</label><input id="qtDiscount" type="number" step="0.01" value="0" min="0" placeholder="0" style="width:120px;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
     '<div class="form-group mt-1"><label>Notas</label><textarea id="qtNotes" rows="2" class="w-full">' + escHtml(q.notes || '') + '</textarea></div>',
     async function () {
       if (!window.quoteCart.length) return showAlert('Agregue al menos un producto', 'danger');
       var client_id = document.getElementById('qtClient').value || null;
       var notes = document.getElementById('qtNotes').value.trim();
-      var r = await api('PUT', '/quotes/' + id, { client_id: client_id, items: window.quoteCart, notes: notes });
+      var r = await api('PUT', '/quotes/' + id, { client_id: client_id, items: window.quoteCart, notes: notes, discount: parseFloat(document.getElementById("qtDiscount")?.value) || 0 });
       if (!r.success) return showAlert(r && r.error ? r.error : 'Error', 'danger');
       await api('PUT', '/quotes/' + id + '/status', { status: 'aprobada' });
-      var saleRes = await api('POST', '/sales', { items: window.quoteCart.map(function(it) { return { product_id: it.product_id, product_name: it.product_name, quantity: it.quantity, price: it.price }; }), discount: 0, payment_method: 'cuenta_corriente', client_id: client_id });
+      var saleRes = await api('POST', '/sales', { items: window.quoteCart.map(function(it) { return { product_id: it.product_id, product_name: it.product_name, quantity: it.quantity, price: it.price }; }), discount: parseFloat(document.getElementById("qtDiscount")?.value) || 0, payment_method: 'cuenta_corriente', client_id: client_id });
       closeModal(); loadQuotes();
       if (saleRes && saleRes.success) {
         showAlert('Presupuesto confirmado - Venta #' + saleRes.id + ' generada');
@@ -1780,7 +1783,9 @@ async function exportQuotePdf(id) {
     '<div class="twrap">' +
     '<table class="items"><thead><tr><th style="width:34px">#</th><th>Detalle</th><th class="r" style="width:60px">Cant.</th><th class="r" style="width:90px">Precio</th><th class="r" style="width:110px">Subtotal</th></tr></thead><tbody>' + (itemsHtml || '<tr><td colspan="5" style="text-align:center">Sin items</td></tr>') + '</tbody></table>' +
     '<div class="totals">' +
-    '<div class="trow grand"><span>TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></div>' +
+    '<div class="trow"><span>Valor Total Real:</span><span>$' + Number(q.total + (q.discount || 0)).toFixed(2) + '</span></div>' +
+    (q.discount > 0 ? '<div class="trow"><span>Descuento:</span><span>-$' + Number(q.discount).toFixed(2) + '</span></div>' : '') +
+    '<div class="trow grand"><span>Valor con Descuento / TOTAL:</span><span>$' + Number(q.total).toFixed(2) + '</span></div>' +
     '</div>' +
     '<div class="foot">Documento emitido por el Sistema POS de Caños Embalse<div class="discl">DOCUMENTO NO VALIDO COMO FACTURA - PRESUPUESTO VALIDO 7 DIAS</div></div>' +
     '</div>' +

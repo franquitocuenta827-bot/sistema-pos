@@ -58,7 +58,7 @@ app.post('/api/users', auth, adminOnly, (req, res) => {
   const db = getDb();
   try {
     const hash = bcrypt.hashSync(password, 10);
-    db.run("INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)", [username, hash, full_name || '', role || 'vendedor']);
+    db.run("INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?, ?)", [username, hash, full_name || '', role || 'vendedor']);
     saveDb();
     res.json({ success: true });
   } catch {
@@ -328,12 +328,12 @@ app.get('/api/quotes/:id', auth, (req, res) => {
 });
 
 app.post('/api/quotes', auth, (req, res) => {
-  const { client_id, items, notes } = req.body;
+  const { client_id, items, notes, discount } = req.body;
   if (!items || !items.length) return res.status(400).json({ error: 'Debe incluir productos' });
   const db = getDb();
   let total = 0;
   for (const item of items) total += item.quantity * item.price;
-  db.run("INSERT INTO quotes (client_id, user_id, total, notes) VALUES (?, ?, ?, ?)", [client_id || null, req.user.id, total, notes || '']);
+  db.run("INSERT INTO quotes (client_id, user_id, total, discount, notes) VALUES (?, ?, ?, ?, ?)", [client_id || null, req.user.id, total, discount || 0, notes || '']);
   const quoteId = lastId();
   for (const item of items) {
     const subtotal = item.quantity * item.price;
@@ -352,7 +352,7 @@ app.put('/api/quotes/:id/status', auth, (req, res) => {
 });
 
 app.put('/api/quotes/:id', auth, (req, res) => {
-  const { client_id, items, notes } = req.body;
+  const { client_id, items, notes, discount } = req.body;
   if (!items || !items.length) return res.status(400).json({ error: 'Debe incluir productos' });
   const db = getDb();
   let total = 0;
