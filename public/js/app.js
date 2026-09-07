@@ -301,17 +301,30 @@ async function loadDashboard() {
   } else {
     topHtml = '<tr><td colspan="2" class="text-center" style="color:#94a3b8">Sin datos</td></tr>';
   }
-  c.innerHTML = '<div class="stats-grid">' +
-    '<div class="stat-card"><div class="label">Productos</div><div class="num">' + d.total_products + '</div></div>' +
-    '<div class="stat-card' + (d.low_stock > 0 ? ' style="background:#7f1d1d66;cursor:pointer"' : ' style="cursor:pointer"') + '" onclick="showLowStockList()"><div class="label">Stock Bajo</div><div class="num"' + (d.low_stock > 0 ? ' style="color:var(--danger)"' : '') + '>' + d.low_stock + '</div><div style="font-size:.7rem;color:var(--text-muted)">Ver lista</div></div>' +
-    '<div class="stat-card"><div class="label">Proveedores</div><div class="num">' + d.total_suppliers + '</div></div>' +
-    '<div class="stat-card"><div class="label">Clientes</div><div class="num">' + d.total_clients + '</div></div>' +
-    '<div class="stat-card"><div class="label">Ventas Hoy</div><div class="num">' + d.today_sales + '</div></div>' +
-    '<div class="stat-card"><div class="label">Ingresos Hoy</div><div class="num">$' + Number(d.today_revenue).toFixed(2) + '</div></div>' +
-    '<div class="stat-card"><div class="label">Ingresos del Mes</div><div class="num">$' + Number(d.month_revenue).toFixed(2) + '</div></div>' +
-    '</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' +
-    '<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">Ventas Ultimos 7 Dias</h3><div style="height:200px;display:flex;align-items:flex-end;gap:4px;padding-top:1rem">' + chartHtml + '</div></div>' +
-    '<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">Productos Mas Vendidos</h3><table><thead><tr><th>Producto</th><th class="text-right">Cantidad</th></tr></thead><tbody>' + topHtml + '</tbody></table></div></div>';
+   var payHtml = '';
+   if (d.payments_summary && d.payments_summary.length) {
+     payHtml = '<table><thead><tr><th>Forma de Pago</th><th class="text-right">Cantidad</th><th class="text-right">Total</th></tr></thead><tbody>';
+     for (var i = 0; i < d.payments_summary.length; i++) {
+       var p = d.payments_summary[i];
+       var label = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia', cuenta_corriente:'Cuenta Corriente', otro:'Otro' };
+       payHtml += '<tr><td>' + (label[p.payment_method] || p.payment_method) + '</td><td class="text-right">' + p.count + '</td><td class="text-right">$' + Number(p.total).toFixed(2) + '</td></tr>';
+     }
+     payHtml += '</tbody></table>';
+   } else {
+     payHtml = '<div class="empty-state">Sin datos</div>';
+   }
+   c.innerHTML = '<div class="stats-grid">' +
+     '<div class="stat-card"><div class="label">Productos</div><div class="num">' + d.total_products + '</div></div>' +
+     '<div class="stat-card' + (d.low_stock > 0 ? ' style="background:#7f1d1d66;cursor:pointer"' : ' style="cursor:pointer"') + '" onclick="showLowStockList()"><div class="label">Stock Bajo</div><div class="num"' + (d.low_stock > 0 ? ' style="color:var(--danger)"' : '') + '>' + d.low_stock + '</div><div style="font-size:.7rem;color:var(--text-muted)">Ver lista</div></div>' +
+     '<div class="stat-card"><div class="label">Proveedores</div><div class="num">' + d.total_suppliers + '</div></div>' +
+     '<div class="stat-card"><div class="label">Clientes</div><div class="num">' + d.total_clients + '</div></div>' +
+     '<div class="stat-card"><div class="label">Ventas Hoy</div><div class="num">' + d.today_sales + '</div></div>' +
+     '<div class="stat-card"><div class="label">Ingresos Hoy</div><div class="num">$' + Number(d.today_revenue).toFixed(2) + '</div></div>' +
+     '<div class="stat-card"><div class="label">Ingresos del Mes</div><div class="num">$' + Number(d.month_revenue).toFixed(2) + '</div></div>' +
+     '</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' +
+     '<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">Ventas Ultimos 7 Dias</h3><div style="height:200px;display:flex;align-items:flex-end;gap:4px;padding-top:1rem">' + chartHtml + '</div></div>' +
+     '<div class="card"><h3 style="margin-bottom:1rem;font-size:.95rem">Productos Mas Vendidos</h3><table><thead><tr><th>Producto</th><th class="text-right">Cantidad</th></tr></thead><tbody>' + topHtml + '</tbody></table></div>' +
+     '<div class="card" style="grid-column:1/-1"><h3 style="margin-bottom:1rem;font-size:.95rem">Resumen por Forma de Pago (Ultimos 7 Dias)</h3>' + payHtml + '</div></div>';
 }
 
 async function showLowStockList() {
@@ -872,13 +885,10 @@ function renderSaleCart() {
     var item = saleCart[i];
     var sub = item.qty * item.price;
     total += sub;
-    html += '<tr><td><strong>' + escHtml(item.name) + '</strong>' +
-      ((item.description1 || item.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(item.description1 || '') + (item.description1 && item.description2 ? ' | ' : '') + escHtml(item.description2 || '') + '</small>' : '') +
-      '</td><td>' +
-      '<button class="btn btn-sm btn-outline" onclick="saleCart[' + i + '].qty=Math.max(1,saleCart[' + i + '].qty-1);renderSaleCart()">-</button> ' +
-      '<input type="number" min="1" value="' + item.qty + '" onchange="saleSetQty(' + i + ', this.value)" style="width:70px;text-align:center;padding:2px 4px;background:var(--bg, #fff);color:var(--text);border:1px solid var(--border);border-radius:4px" class="qty-input"> ' +
-      '<button class="btn btn-sm btn-outline" onclick="saleCart[' + i + '].qty++;renderSaleCart()">+</button></td><td>$' + Number(item.price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td>' +
-      '<td><button class="btn btn-sm btn-danger" onclick="saleCart.splice(' + i + ',1);renderSaleCart();updateQuickBtn()">&times;</button></td></tr>';
+     html += '<tr><td><strong>' + escHtml(item.name) + '</strong>' +
+       ((item.description1 || item.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(item.description1 || '') + (item.description1 && item.description2 ? ' | ' : '') + escHtml(item.description2 || '') + '</small>' : '') +
+       '</td><td><input type="number" step="0.01" min="0.01" value="' + item.qty + '" onchange="saleSetQty(' + i + ', this.value)" style="width:80px;text-align:center;padding:4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px" class="qty-input"></td><td>$' + Number(item.price).toFixed(2) + '</td><td>$' + sub.toFixed(2) + '</td>' +
+       '<td><button class="btn btn-sm btn-danger" onclick="saleCart.splice(' + i + ',1);renderSaleCart();updateQuickBtn()">&times;</button></td></tr>';
   }
   if (!html) html = '<tr><td colspan="5" class="empty-state">Sin productos. Busque y agregue productos arriba.</td></tr>';
   tbody.innerHTML = html;
@@ -934,16 +944,16 @@ function addSaleProduct(id, name, price, stock, desc1, desc2) {
       return;
     }
   }
-  saleCart.push({ product_id: id, name: name, qty: 1, price: price, description1: desc1 || '', description2: desc2 || '' });
-  renderSaleCart();
-  document.getElementById('vs_search').value = '';
-  document.getElementById('vs_results').innerHTML = '';
+   saleCart.push({ product_id: id, name: name, qty: 1, price: price, description1: desc1 || '', description2: desc2 || '' });
+   renderSaleCart();
+   document.getElementById('vs_search').value = '';
+   document.getElementById('vs_results').innerHTML = '';
 }
 
 function saleSetQty(i, val) {
-  var q = parseInt(val, 10);
-  if (isNaN(q) || q < 1) q = 1;
-  if (i >= 0 && i < saleCart.length) { saleCart[i].qty = q; renderSaleCart(); }
+   var q = parseFloat(val);
+   if (isNaN(q) || q <= 0) q = 0.01;
+   if (i >= 0 && i < saleCart.length) { saleCart[i].qty = q; renderSaleCart(); }
 }
 
 function escJs(s) {
@@ -978,29 +988,33 @@ async function quickSale() {
     var p = await api('GET', '/products/' + item.product_id);
     if (p && item.qty > p.stock && p.stock >= 0) stockWarnings.push(item.name + ' (disp: ' + p.stock + ')');
   }
-  // Mostrar confirmacion con detalle
-  var total = 0;
-  var itemsHtml = '';
-  for (var i = 0; i < saleCart.length; i++) {
-    var it = saleCart[i];
-    var sub = it.qty * it.price;
-    total += sub;
-    itemsHtml += '<tr><td>' + escHtml(it.name) + ((it.description1 || it.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(it.description1 || '') + (it.description1 && it.description2 ? ' | ' : '') + escHtml(it.description2 || '') + '</small>' : '') + '</td><td class="text-center">' + it.qty + '</td><td class="text-right">$' + Number(it.price).toFixed(2) + '</td><td class="text-right">$' + sub.toFixed(2) + '</td></tr>';
-  }
-  var paymentLabels = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', otro: 'Otro' };
-  var pagoLabel = paymentLabels[payment] || payment;
-  openModal('Confirmar Venta',
-    '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
-    '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
-    '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
-    '<tr style="font-weight:700"><td colspan="3" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem">$' + total.toFixed(2) + '</td></tr>' +
-    '</tbody></table>',
-    async function () {
-      var btn = document.getElementById('btnQuickSale');
-      btn.disabled = true;
-      btn.textContent = 'Procesando...';
-      var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
-      var res = await api('POST', '/sales', { items: items, discount: 0, payment_method: payment, client_id: clientId });
+   // Mostrar confirmacion con detalle y descuento
+   var total = 0;
+   var itemsHtml = '';
+   for (var i = 0; i < saleCart.length; i++) {
+     var it = saleCart[i];
+     var sub = it.qty * it.price;
+     total += sub;
+     itemsHtml += '<tr><td>' + escHtml(it.name) + ((it.description1 || it.description2) ? '<br><small style="color:var(--text-muted)">' + escHtml(it.description1 || '') + (it.description1 && it.description2 ? ' | ' : '') + escHtml(it.description2 || '') + '</small>' : '') + '</td><td class="text-center">' + it.qty + '</td><td class="text-right">$' + Number(it.price).toFixed(2) + '</td><td class="text-right">$' + sub.toFixed(2) + '</td></tr>';
+   }
+   var paymentLabels = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia', cuenta_corriente: 'Cuenta Corriente', otro: 'Otro' };
+   var pagoLabel = paymentLabels[payment] || payment;
+   openModal('Confirmar Venta',
+     '<p><strong>Cliente:</strong> ' + escHtml(clientName) + '<br><strong>Forma de pago:</strong> ' + pagoLabel + '</p>' +
+     '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
+     '<div class="form-group"><label>Descuento ($)</label><input id="vDiscount" type="number" step="0.01" value="0" min="0" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></div>' +
+     '<table><thead><tr><th>Producto</th><th class="text-center">Cant</th><th class="text-right">Precio</th><th class="text-right">Subtotal</th></tr></thead><tbody>' + itemsHtml +
+     '<tr style="font-weight:700"><td colspan="3" class="text-right">TOTAL</td><td class="text-right" style="color:var(--primary-light);font-size:1.1rem" id="vTotalDisplay">$' + total.toFixed(2) + '</td></tr>' +
+     '</tbody></table>',
+     async function () {
+       var discount = parseFloat(document.getElementById('vDiscount').value) || 0;
+       if (discount < 0) discount = 0;
+       var finalTotal = total - discount;
+       var btn = document.getElementById('btnQuickSale');
+       btn.disabled = true;
+       btn.textContent = 'Procesando...';
+       var items = saleCart.map(function(it) { return { product_id: it.product_id, product_name: it.name, quantity: it.qty, price: it.price, description: [it.description1, it.description2].filter(Boolean).join(' | ') }; });
+       var res = await api('POST', '/sales', { items: items, discount: discount, payment_method: payment, client_id: clientId });
       btn.disabled = false;
       if (res && res.success) {
         closeModal();
@@ -1208,18 +1222,18 @@ async function loadSales() {
   document.getElementById('salesTable').innerHTML = html;
 }
 
-async function viewSale(id) {
-  var sale = await api('GET', '/sales/' + id);
-  if (!sale) return;
-  var itemsHtml = '';
-  if (sale.items) {
-    for (var i = 0; i < sale.items.length; i++) {
-      itemsHtml += '<tr><td>' + sale.items[i].product_name + '</td><td>' + sale.items[i].quantity + '</td><td>$' + Number(sale.items[i].price).toFixed(2) + '</td><td>$' + Number(sale.items[i].subtotal).toFixed(2) + '</td></tr>';
-    }
-  }
-  openModal('Venta #' + sale.id,
-    '<p><strong>Cliente:</strong> ' + (sale.client_name || 'General') + '<br><strong>Usuario:</strong> ' + (sale.user_name || '-') + '<br><strong>Metodo de pago:</strong> ' + fmtPay(sale.payment_method) + '<br><strong>Fecha:</strong> ' + sale.created_at + '</p>' +
-    '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
+ async function viewSale(id) {
+   var sale = await api('GET', '/sales/' + id);
+   if (!sale) return;
+   var itemsHtml = '';
+   if (sale.items) {
+     for (var i = 0; i < sale.items.length; i++) {
+       itemsHtml += '<tr><td>' + escHtml(sale.items[i].product_name) + (sale.items[i].description ? '<br><small style="color:var(--text-muted)">' + escHtml(sale.items[i].description) + '</small>' : '') + '</td><td>' + sale.items[i].quantity + '</td><td>$' + Number(sale.items[i].price).toFixed(2) + '</td><td>$' + Number(sale.items[i].subtotal).toFixed(2) + '</td></tr>';
+     }
+   }
+   openModal('Venta #' + sale.id,
+     '<p><strong>Cliente:</strong> ' + (sale.client_name || 'General') + '<br><strong>Usuario:</strong> ' + (sale.user_name || '-') + '<br><strong>Metodo de pago:</strong> ' + fmtPay(sale.payment_method) + '<br><strong>Fecha:</strong> ' + sale.created_at + '</p>' +
+     '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
     '<table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>' + itemsHtml + '</tbody></table>' +
     '<hr style="margin:.75rem 0;border:none;border-top:1px solid var(--border)">' +
     '<div style="display:flex;justify-content:space-between;font-weight:700"><span>Subtotal: $' + (Number(sale.total) + Number(sale.discount || 0)).toFixed(2) + '</span><span>Descuento: $' + Number(sale.discount || 0).toFixed(2) + '</span><span>Total: $' + Number(sale.total).toFixed(2) + '</span></div>' +
